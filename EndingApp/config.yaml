@@ -1,0 +1,32 @@
+# EndingApp Configuration File
+# This file configures the appearance and behavior of the ending scene
+
+ending:
+  # Background image for the ending scene
+  background: assets/images/bg.png
+
+  # Music file to play during the ending
+  music: assets/music/remix.mp3
+
+  # Window dimensions for the ending scene
+  width: 1920
+  height: 1080
+
+  # Cinematic black bars height in pixels (top and bottom)
+  # Set to 0 to disable black bars
+  blackBarHeight: 15
+
+  # Font size for credits text
+  fontSize: 26
+
+  # Font size for section headers
+  sectionFontSize: 26
+
+  # New ending scene configuration
+  endingStartDelay: 2.0
+  endingStartText: Stream Ending
+  endingStartTextHideTime: 3.0
+  endingEndText: Thanks for watching, see you next time!
+  endingEndTextHideTime: 5.0
+  endingEmote: assets/images/outro-emote.png
+  copyrightText: © 2025 seyuppi

@@ -1,0 +1,376 @@
+# Credits Configuration
+# This file defines the credits that will be displayed in the ending scene
+# Each entry can be a section with values, or a separator line
+
+credits:
+  - section: [ゆっぴの物語]
+    values:
+      - [ The Story of Yuppi ]
+  - section: ♢ Director
+    values:
+      - seyuppi
+  - section: ♢ Writer
+    values:
+      - seyuppi
+  - section: ♢ Producer
+    values:
+      - seyuppi
+  - section: ♢ Production Designer
+    values:
+      - seyuppi
+  - section: ♢ Editor
+    values:
+      - seyuppi
+      - ItsBlackFang
+  - section: ♢ Creative Inspirations
+    values:
+      - WARUDO
+  - section: ♢ Setting
+    values:
+      - [Unnamed] Kingdom
+  - section: ♢ Mascots
+    values:
+      - Eggu
+      - Uncle Tomato
+      - Wizard Bear
+      - Garland Dino
+  - section: ♢ War Generals (Moderators)
+    values:
+      - GoodSpeedXan (Xan)
+      - ItsJooze (Jooze)
+      - Salemba_ (Salemba)
+      - IrenSuidas (Iren)
+  - section: ♢ Dukes and Duchesses (VIPs)
+    values:
+      - DaZotto
+      - YukienniTokki
+      - AnaisNekobie
+      - ryanruger
+      - Sp4ceCloud
+      - SylvieNyxAura
+      - HewwoKookiez
+      - serprite
+      - ItsBlackFang
+      - Mottis
+      - KoizumiShimu
+      - ThubanVT
+      - FleetingCandle
+  - section: ♢ All-time Top 3 Gifters
+    values:
+      - IrenSuidas
+      - FleetingCandle
+      - ryanruger
+  - section: ♢ All-time Top 3 Cheerers
+    values:
+      - IrenSuidas
+      - SylvieNyxAura
+      - kaimangambler
+  - section: ♢ All-time Top 3 Tippers
+    values:
+      - AbyssDragonSpirit
+      - hinahiro0727
+      - IrenSuidas
+  - section: ♢ Monthly Clip Contest Winners
+    values:
+      - Elixer88
+      - IrenSuidas
+      - Salemba_
+  - section: ♢ Games
+    values:
+      - Stardew Valley
+      - Undertale
+      - Chess
+      - Little Nightmares
+      - Hollow Knight (speedrun PB 1h 18m 07s)
+      - skribbl.io
+      - osu!
+      - Genshin Impact
+      - Hades
+      - Minecraft
+      - Doodle Champion Island Games
+      - Sims 4
+      - It Takes Two
+      - Pokemon Brilliant Diamond
+      - Pokemon Legends: Arceus
+      - Elden Ring
+      - Kirby and the Forgotten Land
+      - Celeste
+      - 5D Chess with Multiverse Time Travel
+      - Fall Guys
+      - Pokemon Soul Link Nuzlocke
+      - Escape Simulator
+      - Marbles on Stream
+      - Cuphead
+      - Jump King
+      - Phasmophobia
+      - Stray
+      - The Quarry
+      - Super Mario Odyssey
+      - Raft
+      - Super Mario 64
+      - Melatonin
+      - Unpacking
+      - PowerWash Simuator
+      - The Legend of Zelda: BOTW
+      - Placid Plastic Duck Simulator
+      - Portal 2
+      - Hi-fi RUSH
+      - Portal
+      - Ori and the Blind Forest
+      - スイカのゲーム (Watermelon Game)
+      - Ori and the Will of the Wisp
+      - Katamari Damacy REROLL
+      - Dave the Diver
+      - Superliminal
+      - Muse Dash
+      - HoloCure - Save the Fans!
+      - A Little to the Left
+      - The Exit 8
+      - My Friend Peppa Pig
+      - Infinite Craft
+      - Palworld
+      - Study/Work With Me
+      - Balatro
+      - Holo X Break
+      - Dorfromantik
+      - Buckshot Roulette
+      - Content Warning
+      - The Coin Game
+      - Cult of the Lamb
+      - Duck Detective: The Secret Salami
+      - GRIS
+      - Cyberpunk 2077
+      - Marvel Rivals
+      - Pokemon Violet
+      - MiSide
+      - Little Nightmares II
+      - Forgotton Anne
+      - Project Zomboid
+      - TCG Card Shop Simulator
+  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
+  - section: ♢ Chapter 1
+    values:
+      - [Unnamed] Kingdom Summer Festival
+  - section: ♢ Summer Festival 2022 Participants Shoutout
+    values:
+      - Ashleyfashleybobashley
+      - GodSpeedXan
+      - KoizumiShimu
+      - RisingInLove
+      - Sp4ceCloud
+      - ThubanVT
+      - YukienniTokki
+      - mbello8
+      - Zaroc258
+      - xZech_
+      - ConnieAmbershard
+      - MetroDweller78
+      - SylvieAura
+      - Cyber_Chroma_
+      - DarthUnmei
+      - messivandessi
+      - DadBodRapunzel
+      - Exan_Bloodmoon
+      - RashOmaLol
+      - Colonel_Doops1
+      - HewwoKookiez
+      - Merasmoo
+      - ryanruger
+      - SyvisElnir
+      - yeezus1016
+      - chrisismood
+      - ShiverShale
+      - hylonomus
+      - AnaistheVTuber
+      - SlimeyDegen22
+      - serprite
+      - celhalcyon
+      - DarkLinkLonkLankLunkLoink
+      - Friendbndew
+      - SquishyBloom
+      - EggiesBenji
+      - PhoenixLumina
+      - Salemba_
+    twoColumns: true
+  - section: ♢ Summer Festival 2022 Raiders
+    values:
+      - DeadlyRaven
+      - HewwoKookiez
+      - RaykOscuro
+      - SyvisElnir
+      - Colonel_Doops1
+      - ThubanVT
+      - universaldertek
+      - Salemba_
+      - ryanruger
+      - winryss
+      - Sp4ceCloud
+      - Friendbndew
+      - SquishyBloom
+      - GodhandPlusOne
+    twoColumns: true
+  - section: ♢ Chapter 2
+    values:
+      - [Unnamed] Kingdom Birthmonth Botanical Party
+  - section: ♢ Birthmonth Celebration 2023 Participants Shoutout
+    values:
+      - AleisterCazar
+      - Exan_Bloodmoon
+      - GodSpeedXan
+      - ItsBlackFqng
+      - LemonDingo
+      - ryanruger
+      - SkellyBean18
+      - Sp4ceCloud
+      - theknightlykiwi
+      - xZech_
+      - Abyssal_o_
+      - AndreDahMan
+      - BlueberrySeal
+      - DarthUnmei
+      - Friendbndew
+      - hylonomus
+      - Merasmoo
+      - Senorsalad
+      - Chaistie
+      - FairJame
+      - hinahiro0727
+      - SlimeyDegen22
+      - Linokii
+      - serprite
+      - Sonny_D_Light
+      - SyvisElnir
+      - ThubanVT
+      - YukienniTokki
+      - AnaisNekobie
+      - ashleyfashleybowbashley
+      - chrisismood
+      - Edorah
+      - HewwoKookiez
+      - KoizumiShimu
+      - Salemba_
+      - YummyPotat0
+    twoColumns: true
+  - section: ♢ Birthmonth Celebration 2023 Raiders
+    values:
+      - Linokii
+      - ThubanVT
+      - Sp4ceCloud
+      - trueGoldVortex
+      - Cawfee
+      - DrookDane
+      - AleisterCazar
+    twoColumns: true
+  - section: ♢ Chapter 3
+    values:
+      - [Unnamed] Kingdom Minecraft Server Launch
+  - section: ♢ Unnamed SMP Ribbon Cutting Ceremony Participants
+    values:
+      - ConnieAmbershard
+      - hylonomus
+      - IrenSuidas
+      - kabel_marder
+      - LawdCookies
+      - ssbKingzilla47
+      - TheJooze
+      - GodSpeedXan
+      - ImShadowDev
+      - ItsBlackFang
+      - KoizumiShimu
+      - Senorsalad_
+      - SylvieNyxAura
+    twoColumns: true
+  - section: ♢ Unnamed SMP Launch Day Shoutouts
+    values:
+      - xZech_
+      - SylvieNyxAura
+      - StrategicGamesEtc
+      - ItsBlackFang
+      - ThubanVT
+      - Salemba_
+      - LawdCookies
+      - universalderek
+      - serprite
+      - KoizumiShimu
+      - IrenSuidas
+      - GodSpeedXan
+      - ImShadowDev
+      - hylonomus
+      - itsJooze
+      - ConnieAmbershard
+      - ssbKingzilla47
+    twoColumns: true
+  - section: ♢ Chapter 4
+    values:
+      - [Unnamed] Kingdom Starry Starry Party!
+  - section: ♢ Starry Starry Party! 2024 Participants Shoutouts
+    values:
+      - aki_TONE
+      - ChairHere
+      - DeadlyRaven
+      - DoanDOS
+      - FairJame
+      - hinahiro0727
+      - HustlerBoJenkins
+      - IrenSuidas
+      - KoizumiShimu
+      - Linokii
+      - MaxPocus
+      - ryanruger
+      - Salemba_
+      - serprite
+      - SkellyBean18
+      - SyvisElnir
+      - universalderek
+      - YukienniTokki
+      - 33mamaster
+      - AnimeLodewijk
+      - ConnieAmbershard
+      - Exan_Bloodmoon
+      - frankbutpurple
+      - Friendbndew
+      - itsJooze
+      - kabel_marder
+      - LemonDingo
+      - Sonny_D_Light
+      - SuterusuDaioh
+      - SylvieNyxAura
+      - ThatDonkus
+      - ThubanVT
+    twoColumns: true
+  - section: ♢ Starry Starry Party! 2024 Raiders
+    values:
+      - universalderek
+      - LawdCookies
+      - The_True_Champion
+      - SyvisElnir
+      - DeadlyRaven
+      - HewwoKookiez
+      - Mottis
+      - FairJame
+      - kailitwee
+      - Sp4ceCloud
+      - SkellyBean18
+      - Salemba_
+    twoColumns: true
+  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
+  - section: ♢ Music
+    values:
+      - "Mario Kart Wii - Toad's Factory [Remix]"
+      - by Qumu
+  - section: ♢ Special Thanks
+    values:
+      - DaZott0
+      - GodSpeedXan
+      - Bjonki
+      - Senorsalad_
+      - ItsBlackFang
+      - My War Generals
+      - All My Wonderful Friends
+      - My Subs
+      - My Yuppizens
+      - Chat
+      - All Summer Festival 2022 Participants
+      - All Birthmonth Celebration 2023 Participants
+      - All Unnamed SMP Launch Day Viewers
+      - All Starry Starry Party 2024 Participants
