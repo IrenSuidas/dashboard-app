@@ -6,6 +6,7 @@ namespace EndingApp;
 /// <summary>
 /// Handles font loading with automatic fallback support for Unicode symbols.
 /// Uses a primary font for ASCII characters and a symbol font for non-ASCII.
+/// Only loads the exact codepoints needed from the credits for memory efficiency.
 /// </summary>
 internal sealed class FontLoader : IDisposable
 {
@@ -27,6 +28,10 @@ internal sealed class FontLoader : IDisposable
 
     /// <summary>
     /// Loads fonts with the specified codepoints for rendering.
+    /// </summary>
+    /// <param name="primaryFontPath">Path to primary font (ASCII characters).</param>
+    /// <param name="symbolFontPath">Path to symbol font (symbols and Japanese characters).</param>
+    /// <param name="fontSize">Font size to load.</param>
     /// <param name="codepoints">All codepoints that need to be supported.</param>
     /// <param name="textureFilter">Texture filter for font rendering quality.</param>
     public unsafe void Load(
@@ -67,7 +72,7 @@ internal sealed class FontLoader : IDisposable
         foreach (int cp in asciiCodepoints)
             _primaryGlyphs.Add(cp);
 
-        // Load symbol font with all codepoints
+        // Load symbol font with all codepoints (symbols + Japanese)
         if (File.Exists(symbolFontPath))
         {
             _symbolFont = Raylib.LoadFontEx(
@@ -78,7 +83,7 @@ internal sealed class FontLoader : IDisposable
             );
             Raylib.SetTextureFilter(_symbolFont.Texture, textureFilter);
             Console.WriteLine(
-                $"FontLoader: Symbol font loaded from {symbolFontPath} ({codepoints.Length} glyphs)"
+                $"FontLoader: Symbol font loaded from {symbolFontPath} ({_symbolFont.GlyphCount} glyphs)"
             );
         }
         else
@@ -103,14 +108,13 @@ internal sealed class FontLoader : IDisposable
     /// <summary>
     /// Extracts all unique codepoints from the given credits entries.
     /// Includes ASCII baseline (32-126) automatically.
+    /// Only extracts the exact characters needed - does NOT load full CJK ranges.
     /// </summary>
     /// <param name="credits">List of credit entries to extract codepoints from.</param>
     /// <returns>Array of unique codepoints.</returns>
     public static int[] ExtractCodepoints(List<CreditEntry> credits)
     {
         var codepointSet = new HashSet<int>();
-        // For debug: collect all chars for logging
-        var allChars = new List<char>();
 
         foreach (var entry in credits)
         {
@@ -119,7 +123,6 @@ internal sealed class FontLoader : IDisposable
                 foreach (var rune in entry.Separator.EnumerateRunes())
                 {
                     codepointSet.Add(rune.Value);
-                    allChars.Add((char)rune.Value);
                 }
             }
             else
@@ -129,7 +132,6 @@ internal sealed class FontLoader : IDisposable
                     foreach (var rune in entry.Section.EnumerateRunes())
                     {
                         codepointSet.Add(rune.Value);
-                        allChars.Add((char)rune.Value);
                     }
                 }
 
@@ -138,7 +140,6 @@ internal sealed class FontLoader : IDisposable
                     foreach (var rune in value.EnumerateRunes())
                     {
                         codepointSet.Add(rune.Value);
-                        allChars.Add((char)rune.Value);
                     }
                 }
             }
@@ -148,20 +149,16 @@ internal sealed class FontLoader : IDisposable
         for (int i = 32; i <= 126; i++)
         {
             codepointSet.Add(i);
-            allChars.Add((char)i);
         }
 
-        // Always add hiragana (U+3040–U+309F)
-        for (int i = 0x3040; i <= 0x309F; i++)
-            codepointSet.Add(i);
-        // Always add katakana (U+30A0–U+30FF)
-        for (int i = 0x30A0; i <= 0x30FF; i++)
-            codepointSet.Add(i);
-        // Always add common kanji (U+4E00–U+9FFF)
-        for (int i = 0x4E00; i <= 0x9FFF; i++)
-            codepointSet.Add(i);
-
-        // Log all extracted chars for debug
+        var nonAscii = codepointSet.Where(cp => cp > 126).OrderBy(cp => cp).ToList();
+        if (nonAscii.Count > 0)
+        {
+            string chars = string.Join("", nonAscii.Select(cp => char.ConvertFromUtf32(cp)));
+            Console.WriteLine(
+                $"FontLoader: Extracted {nonAscii.Count} non-ASCII codepoints: {chars}"
+            );
+        }
 
         return [.. codepointSet];
     }

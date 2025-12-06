@@ -9,8 +9,8 @@ ending:
   music: assets/music/remix.mp3
 
   # Window dimensions for the ending scene
-  width: 1920
-  height: 1080
+  width: 1280
+  height: 720
 
   # Cinematic black bars height in pixels (top and bottom)
   # Set to 0 to disable black bars

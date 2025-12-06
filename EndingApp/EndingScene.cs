@@ -79,11 +79,12 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         _credits = CreditsReader.Read("credits.yaml");
 
         // Extract codepoints and load fonts using FontLoader
+        // Only the exact characters from credits.yaml are extracted - no full CJK ranges
         int[] codepoints = FontLoader.ExtractCodepoints(_credits);
         _fontLoader = new FontLoader();
         _fontLoader.Load(
             "assets/fonts/georgia.ttf",
-            "assets/fonts/DejaVuSans.ttf",
+            "assets/fonts/NotoSansJP-Regular.ttf", // NotoSansJP has symbols + Japanese
             64, // Load at higher resolution for quality
             codepoints,
             TextureFilter.Bilinear
