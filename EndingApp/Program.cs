@@ -21,10 +21,8 @@ internal static class Program
         // Button properties - 3 buttons now
         Rectangle endingButton = new(20, 70, 110, 60);
         Rectangle clipButton = new(145, 70, 110, 60);
-        Rectangle testButton = new(270, 70, 110, 60);
 
         EndingScene? endingScene = null;
-        FontTestScene? fontTestScene = null;
 
         while (!Raylib.WindowShouldClose())
         {
@@ -33,16 +31,11 @@ internal static class Program
             {
                 endingScene.Update();
             }
-            else if (fontTestScene?.IsActive == true)
-            {
-                fontTestScene.Update();
-            }
             else
             {
                 var mousePos = Raylib.GetMousePosition();
                 bool endingHovered = Raylib.CheckCollisionPointRec(mousePos, endingButton);
                 bool clipHovered = Raylib.CheckCollisionPointRec(mousePos, clipButton);
-                bool testHovered = Raylib.CheckCollisionPointRec(mousePos, testButton);
 
                 // Handle button clicks
                 if (Raylib.IsMouseButtonPressed(MouseButton.Left))
@@ -56,11 +49,6 @@ internal static class Program
                     {
                         // TODO: Handle Clip button click
                     }
-                    else if (testHovered)
-                    {
-                        fontTestScene = new FontTestScene();
-                        fontTestScene.Start();
-                    }
                 }
             }
 
@@ -71,11 +59,6 @@ internal static class Program
             {
                 Raylib.ClearBackground(Color.Black);
                 endingScene.Draw();
-            }
-            else if (fontTestScene?.IsActive == true)
-            {
-                Raylib.ClearBackground(Color.Black);
-                fontTestScene.Draw();
             }
             else
             {
@@ -127,35 +110,12 @@ internal static class Program
                     20,
                     Color.White
                 );
-
-                // Draw "Test" button
-                var testColor = Raylib.CheckCollisionPointRec(Raylib.GetMousePosition(), testButton)
-                    ? new Color(100, 100, 100, 200)
-                    : new Color(60, 60, 60, 180);
-                Raylib.DrawRectangleRounded(testButton, 0.3f, 8, testColor);
-                Raylib.DrawRectangleRoundedLines(
-                    testButton,
-                    0.3f,
-                    8,
-                    new Color(200, 200, 200, 255)
-                );
-
-                string testText = "Test";
-                int testTextWidth = Raylib.MeasureText(testText, 20);
-                Raylib.DrawText(
-                    testText,
-                    (int)(testButton.X + (testButton.Width - testTextWidth) / 2),
-                    (int)(testButton.Y + 20),
-                    20,
-                    Color.White
-                );
             }
 
             Raylib.EndDrawing();
         }
 
         endingScene?.Cleanup();
-        fontTestScene?.Cleanup();
         Raylib.CloseWindow();
     }
 }

@@ -21,6 +21,10 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Update="assets/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
