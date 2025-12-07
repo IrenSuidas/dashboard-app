@@ -37,10 +37,13 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
     private List<CreditEntry> _credits = [];
     private float _creditsScrollY;
     private float _creditsScrollSpeed; // dynamically calculated
+    private float _songDuration;
+    private float _musicPlayElapsed; // Manual timer for music playback
 
     // State for intro sequence
     private float _elapsedTime;
     private bool _musicStarted;
+    private bool _musicStopped;
     private bool _creditsStarted;
     private bool _showStartText;
     private float _startTextAlpha;
@@ -99,6 +102,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
 
         // Calculate dynamic credits scroll speed
         float songDuration = Raylib.GetMusicTimeLength(_music);
+        _songDuration = songDuration;
+        _musicStopped = false;
         float scrollTime = Math.Max(songDuration - 15f, 2f); // minimum 2 seconds to avoid div by zero
         float creditsHeight = CalculateCreditsHeight();
         float scrollDistance = _config.Ending.Height + creditsHeight;
@@ -107,6 +112,7 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         // Reset intro state
         _elapsedTime = 0f;
         _musicStarted = false;
+        _musicStopped = false;
         _creditsStarted = false;
         _showStartText = false;
         _startTextAlpha = 0f;
@@ -193,10 +199,30 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
             _creditsScrollY -= _creditsScrollSpeed * dt;
         }
 
-        // Update music stream if started
-        if (_musicStarted)
+        // Update music stream if started and not stopped
+        if (_musicStarted && !_musicStopped)
         {
             Raylib.UpdateMusicStream(_music);
+
+            _musicPlayElapsed += dt;
+            float played = Raylib.GetMusicTimePlayed(_music);
+
+            const float tolerance = 0.08f; // small tolerance in seconds
+            bool endedByApi = played > 0 && played + tolerance >= _songDuration;
+            bool endedByManual = _musicPlayElapsed + tolerance >= _songDuration;
+            if (endedByApi || endedByManual)
+            {
+                // Stop playback explicitly and mark stopped to avoid further updates.
+                Raylib.StopMusicStream(_music);
+                _musicStopped = true;
+                _musicStarted = false;
+                Console.WriteLine(
+                    "INFO: MUSIC: Stopped playback after {0:F2}s (duration {1:F2}s, api={2:F2}s)",
+                    _musicPlayElapsed,
+                    _songDuration,
+                    played
+                );
+            }
         }
     }
 
@@ -355,11 +381,12 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                 _fontLoader.DrawText(
                     entry.Separator!,
                     new Vector2(creditsLeftX, currentY),
-                    fontSize,
+                    sectionFontSize,
                     charSpacing,
-                    _config.Ending.SectionColor
+                    _config.Ending.SectionColor,
+                    _config.Ending.SectionFontWeight
                 );
-                currentY += fontSize + sectionSpacing;
+                currentY += sectionFontSize + sectionSpacing;
             }
             else if (entry.Section != null)
             {
@@ -369,7 +396,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                     new Vector2(creditsLeftX, currentY),
                     sectionFontSize,
                     charSpacing,
-                    _config.Ending.SectionColor
+                    _config.Ending.SectionColor,
+                    _config.Ending.SectionFontWeight
                 );
                 currentY += sectionFontSize + sectionGap;
 
@@ -392,7 +420,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                             new Vector2(creditsLeftX, currentY),
                             fontSize,
                             charSpacing,
-                            _config.Ending.ValuesColor
+                            _config.Ending.ValuesColor,
+                            _config.Ending.ValueFontWeight
                         );
 
                         // Right column value (if exists)
@@ -405,7 +434,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                                 new Vector2(creditsLeftX + colWidth + colGap, currentY),
                                 fontSize,
                                 charSpacing,
-                                _config.Ending.ValuesColor
+                                _config.Ending.ValuesColor,
+                                _config.Ending.ValueFontWeight
                             );
                         }
 
@@ -422,7 +452,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                             new Vector2(creditsLeftX, currentY),
                             fontSize,
                             charSpacing,
-                            _config.Ending.ValuesColor
+                            _config.Ending.ValuesColor,
+                            _config.Ending.ValueFontWeight
                         );
                         currentY += fontSize + valueLineSpacing;
                     }

@@ -18,9 +18,13 @@ ending:
 
   # Font size for credits text
   fontSize: 20
+  # Value font weight: regular, italic, bold, bold-italic
+  fontWeight: regular
 
   # Font size for section headers
   sectionFontSize: 20
+  # Section header font weight
+  sectionFontWeight: bold
 
   # Text colors (hex format: #RRGGBB or #RRGGBBAA)
   sectionColorHex: "#3c3232"
@@ -28,12 +32,13 @@ ending:
 
   # Credits position (0-100 percentage from left to right)
   # 0 = far left, 50 = center, 100 = far right
-  creditsPositionPercentage: 10
+  creditsPositionPercentage: 50
 
   # New ending scene configuration
   endingStartDelay: 2.0
   endingStartText: Stream Ending
   endingStartTextHideTime: 3.0
+
   endingStartTextColorHex: "#3c3232"
   endingEndText: Thanks for watching, see you next time!
   endingEndTextHideTime: 5.0

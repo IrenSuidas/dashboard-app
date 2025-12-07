@@ -10,21 +10,48 @@ namespace EndingApp;
 /// </summary>
 internal sealed class FontLoader : IDisposable
 {
-    private Font _primaryFont;
-    private Font _symbolFont;
+    private static readonly string[] s_italicCandidates =
+    [
+        "-Italic",
+        "Italic",
+        "_Italic",
+        "-italic",
+    ];
+    private static readonly string[] s_boldCandidates = ["-Bold", "Bold", "_Bold", "-bold"];
+    private static readonly string[] s_boldItalicCandidates =
+    [
+        "-BoldItalic",
+        "-BoldItalic",
+        "BoldItalic",
+        "-Bold-Italic",
+        "Bold-Italic",
+        "_BoldItalic",
+    ];
+    private Font _primaryRegular;
+    private Font _primaryItalic;
+    private Font _primaryBold;
+    private Font _primaryBoldItalic;
+    private Font _symbolRegular;
+    private Font _symbolItalic;
+    private Font _symbolBold;
+    private Font _symbolBoldItalic;
     private readonly HashSet<int> _primaryGlyphs = [];
     private readonly HashSet<int> _symbolGlyphs = [];
+    private readonly HashSet<uint> _loggedFontTextureIds = [];
     private bool _disposed;
 
     /// <summary>
     /// Gets the primary font (used for ASCII characters).
     /// </summary>
-    public Font PrimaryFont => _primaryFont;
+    public Font PrimaryFont => _primaryRegular;
+    public Font PrimaryItalicFont => _primaryItalic;
+    public Font PrimaryBoldFont => _primaryBold;
+    public Font PrimaryBoldItalicFont => _primaryBoldItalic;
 
     /// <summary>
     /// Gets the symbol font (used for non-ASCII characters).
     /// </summary>
-    public Font SymbolFont => _symbolFont;
+    public Font SymbolFont => _symbolRegular;
 
     /// <summary>
     /// Loads fonts with the specified codepoints for rendering.
@@ -48,15 +75,15 @@ internal sealed class FontLoader : IDisposable
         // Load primary font with ASCII only
         if (File.Exists(primaryFontPath))
         {
-            _primaryFont = Raylib.LoadFontEx(
+            _primaryRegular = Raylib.LoadFontEx(
                 primaryFontPath,
                 fontSize,
                 asciiCodepoints,
                 asciiCodepoints.Length
             );
-            Raylib.SetTextureFilter(_primaryFont.Texture, textureFilter);
+            Raylib.SetTextureFilter(_primaryRegular.Texture, textureFilter);
             Console.WriteLine(
-                $"FontLoader: Primary font loaded from {primaryFontPath} ({asciiCodepoints.Length} glyphs)"
+                $"FontLoader: Primary regular font loaded from {primaryFontPath} ({asciiCodepoints.Length} glyphs)"
             );
         }
         else
@@ -64,7 +91,7 @@ internal sealed class FontLoader : IDisposable
             Console.WriteLine(
                 $"FontLoader: Primary font not found at {primaryFontPath}, using default"
             );
-            _primaryFont = Raylib.GetFontDefault();
+            _primaryRegular = Raylib.GetFontDefault();
         }
 
         // Populate primary glyphs set
@@ -72,18 +99,101 @@ internal sealed class FontLoader : IDisposable
         foreach (int cp in asciiCodepoints)
             _primaryGlyphs.Add(cp);
 
+        // Attempt to load primary font variants (Italic/Bold/BoldItalic) from common variant filenames
+        string dir = Path.GetDirectoryName(primaryFontPath) ?? string.Empty;
+        string baseName = Path.GetFileNameWithoutExtension(primaryFontPath);
+        string ext = Path.GetExtension(primaryFontPath);
+
+        Font? TryLoadVariant(string[] candidates)
+        {
+            foreach (string cand in candidates)
+            {
+                string candidatePath = Path.Combine(dir, baseName + cand + ext);
+                // Also try variants where baseName may include '-Regular' suffix (e.g. 'NotoSansJP-Regular')
+                string baseWithoutRegular = baseName;
+                if (baseWithoutRegular.EndsWith("-Regular", StringComparison.OrdinalIgnoreCase))
+                    baseWithoutRegular = baseWithoutRegular.Substring(
+                        0,
+                        baseWithoutRegular.Length - "-Regular".Length
+                    );
+                else if (
+                    baseWithoutRegular.EndsWith("_Regular", StringComparison.OrdinalIgnoreCase)
+                )
+                    baseWithoutRegular = baseWithoutRegular.Substring(
+                        0,
+                        baseWithoutRegular.Length - "_Regular".Length
+                    );
+                string candidatePath2 = Path.Combine(dir, baseWithoutRegular + cand + ext);
+                if (File.Exists(candidatePath))
+                {
+                    try
+                    {
+                        var f = Raylib.LoadFontEx(
+                            candidatePath,
+                            fontSize,
+                            asciiCodepoints,
+                            asciiCodepoints.Length
+                        );
+                        Raylib.SetTextureFilter(f.Texture, textureFilter);
+                        Console.WriteLine(
+                            $"FontLoader: Primary variant loaded from {candidatePath}"
+                        );
+                        return f;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"FontLoader: Failed to load font {candidatePath}: {ex.Message}"
+                        );
+                        // continue to try other candidates
+                    }
+                }
+
+                if (
+                    !string.Equals(
+                        candidatePath2,
+                        candidatePath,
+                        StringComparison.OrdinalIgnoreCase
+                    ) && File.Exists(candidatePath2)
+                )
+                {
+                    try
+                    {
+                        var f = Raylib.LoadFontEx(
+                            candidatePath2,
+                            fontSize,
+                            asciiCodepoints,
+                            asciiCodepoints.Length
+                        );
+                        Raylib.SetTextureFilter(f.Texture, textureFilter);
+                        Console.WriteLine(
+                            $"FontLoader: Primary variant loaded from {candidatePath2}"
+                        );
+                        return f;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"FontLoader: Failed to load font {candidatePath2}: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            return null;
+        }
+
         // Load symbol font with all codepoints (symbols + Japanese)
         if (File.Exists(symbolFontPath))
         {
-            _symbolFont = Raylib.LoadFontEx(
+            _symbolRegular = Raylib.LoadFontEx(
                 symbolFontPath,
                 fontSize,
                 codepoints,
                 codepoints.Length
             );
-            Raylib.SetTextureFilter(_symbolFont.Texture, textureFilter);
+            Raylib.SetTextureFilter(_symbolRegular.Texture, textureFilter);
             Console.WriteLine(
-                $"FontLoader: Symbol font loaded from {symbolFontPath} ({_symbolFont.GlyphCount} glyphs)"
+                $"FontLoader: Symbol regular font loaded from {symbolFontPath} ({_symbolRegular.GlyphCount} glyphs)"
             );
         }
         else
@@ -91,17 +201,131 @@ internal sealed class FontLoader : IDisposable
             Console.WriteLine(
                 $"FontLoader: Symbol font not found at {symbolFontPath}, using default"
             );
-            _symbolFont = Raylib.GetFontDefault();
+            _symbolRegular = Raylib.GetFontDefault();
         }
 
         // Populate symbol glyphs set
         _symbolGlyphs.Clear();
-        if (_symbolFont.GlyphCount > 0)
+        if (_symbolRegular.GlyphCount > 0)
         {
-            for (int i = 0; i < _symbolFont.GlyphCount; i++)
+            for (int i = 0; i < _symbolRegular.GlyphCount; i++)
             {
-                _symbolGlyphs.Add(_symbolFont.Glyphs[i].Value);
+                _symbolGlyphs.Add(_symbolRegular.Glyphs[i].Value);
             }
+        }
+
+        // Attempts to load available variants for the primary font family
+        if (_primaryRegular.Texture.Id != 0)
+        {
+            var italicVariant = TryLoadVariant(s_italicCandidates);
+            _primaryItalic = italicVariant ?? _primaryRegular;
+            var boldVariant = TryLoadVariant(s_boldCandidates);
+            _primaryBold = boldVariant ?? _primaryRegular;
+            var boldItalicVariant = TryLoadVariant(s_boldItalicCandidates);
+            if (boldItalicVariant.HasValue)
+                _primaryBoldItalic = boldItalicVariant.Value;
+            else if (_primaryBold.Texture.Id != 0)
+                _primaryBoldItalic = _primaryBold;
+            else if (_primaryItalic.Texture.Id != 0)
+                _primaryBoldItalic = _primaryItalic;
+            else
+                _primaryBoldItalic = _primaryRegular;
+        }
+
+        // Attempt to load symbol font variants from the symbol font path
+        string sdir = Path.GetDirectoryName(symbolFontPath) ?? string.Empty;
+        string sbaseName = Path.GetFileNameWithoutExtension(symbolFontPath);
+        string sext = Path.GetExtension(symbolFontPath);
+        Font? TryLoadSymbolVariant(string[] candidates)
+        {
+            foreach (var cand in candidates)
+            {
+                var candidatePath = Path.Combine(sdir, sbaseName + cand + sext);
+                string sBaseWithoutRegular = sbaseName;
+                if (sBaseWithoutRegular.EndsWith("-Regular", StringComparison.OrdinalIgnoreCase))
+                    sBaseWithoutRegular = sBaseWithoutRegular.Substring(
+                        0,
+                        sBaseWithoutRegular.Length - "-Regular".Length
+                    );
+                else if (
+                    sBaseWithoutRegular.EndsWith("_Regular", StringComparison.OrdinalIgnoreCase)
+                )
+                    sBaseWithoutRegular = sBaseWithoutRegular.Substring(
+                        0,
+                        sBaseWithoutRegular.Length - "_Regular".Length
+                    );
+                var candidatePath2 = Path.Combine(sdir, sBaseWithoutRegular + cand + sext);
+                if (File.Exists(candidatePath))
+                {
+                    try
+                    {
+                        var f = Raylib.LoadFontEx(
+                            candidatePath,
+                            fontSize,
+                            codepoints,
+                            codepoints.Length
+                        );
+                        Raylib.SetTextureFilter(f.Texture, textureFilter);
+                        Console.WriteLine(
+                            $"FontLoader: Symbol variant loaded from {candidatePath}"
+                        );
+                        return f;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"FontLoader: Failed to load symbol font {candidatePath}: {ex.Message}"
+                        );
+                    }
+                }
+                if (
+                    !string.Equals(
+                        candidatePath2,
+                        candidatePath,
+                        StringComparison.OrdinalIgnoreCase
+                    ) && File.Exists(candidatePath2)
+                )
+                {
+                    try
+                    {
+                        var f = Raylib.LoadFontEx(
+                            candidatePath2,
+                            fontSize,
+                            codepoints,
+                            codepoints.Length
+                        );
+                        Raylib.SetTextureFilter(f.Texture, textureFilter);
+                        Console.WriteLine(
+                            $"FontLoader: Symbol variant loaded from {candidatePath2}"
+                        );
+                        return f;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"FontLoader: Failed to load symbol font {candidatePath2}: {ex.Message}"
+                        );
+                    }
+                }
+            }
+            return null;
+        }
+
+        if (_symbolRegular.Texture.Id != 0)
+        {
+            var italicVariant = TryLoadSymbolVariant(s_italicCandidates);
+            _symbolItalic = italicVariant ?? _symbolRegular;
+            var boldVariant = TryLoadSymbolVariant(s_boldCandidates);
+            _symbolBold = boldVariant ?? _symbolRegular;
+            var boldItalicVariant = TryLoadSymbolVariant(s_boldItalicCandidates);
+            if (boldItalicVariant.HasValue)
+                _symbolBoldItalic = boldItalicVariant.Value;
+            else if (_symbolBold.Texture.Id != 0)
+                _symbolBoldItalic = _symbolBold;
+            else if (_symbolItalic.Texture.Id != 0)
+                _symbolBoldItalic = _symbolItalic;
+            else
+                _symbolBoldItalic = _symbolRegular;
         }
     }
 
@@ -168,9 +392,64 @@ internal sealed class FontLoader : IDisposable
     /// </summary>
     /// <param name="codepoint">The Unicode codepoint.</param>
     /// <returns>The font that should be used for this codepoint.</returns>
-    public Font GetFontForCodepoint(int codepoint)
+    public Font GetFontForCodepoint(int codepoint, FontWeight weight)
     {
-        return _primaryGlyphs.Contains(codepoint) ? _primaryFont : _symbolFont;
+        if (!_primaryGlyphs.Contains(codepoint))
+        {
+            switch (weight)
+            {
+                case FontWeight.Bold:
+                    if (_symbolBold.Texture.Id != 0)
+                        return _symbolBold;
+                    return _symbolRegular;
+                case FontWeight.Italic:
+                    if (_symbolItalic.Texture.Id != 0)
+                        return _symbolItalic;
+                    return _symbolRegular;
+                case FontWeight.BoldItalic:
+                    if (_symbolBoldItalic.Texture.Id != 0)
+                        return _symbolBoldItalic;
+                    if (_symbolBold.Texture.Id != 0)
+                        return _symbolBold;
+                    if (_symbolItalic.Texture.Id != 0)
+                        return _symbolItalic;
+                    return _symbolRegular;
+                default:
+                    return _symbolRegular;
+            }
+        }
+
+        switch (weight)
+        {
+            case FontWeight.Regular:
+                if (_primaryRegular.Texture.Id != 0)
+                    return _primaryRegular;
+                if (_primaryBold.Texture.Id != 0)
+                    return _primaryBold;
+                if (_primaryItalic.Texture.Id != 0)
+                    return _primaryItalic;
+                if (_primaryBoldItalic.Texture.Id != 0)
+                    return _primaryBoldItalic;
+                return _primaryRegular;
+            case FontWeight.Italic:
+                if (_primaryItalic.Texture.Id != 0)
+                    return _primaryItalic;
+                return _primaryRegular;
+            case FontWeight.Bold:
+                if (_primaryBold.Texture.Id != 0)
+                    return _primaryBold;
+                return _primaryRegular;
+            case FontWeight.BoldItalic:
+                if (_primaryBoldItalic.Texture.Id != 0)
+                    return _primaryBoldItalic;
+                if (_primaryBold.Texture.Id != 0)
+                    return _primaryBold;
+                if (_primaryItalic.Texture.Id != 0)
+                    return _primaryItalic;
+                return _primaryRegular;
+            default:
+                return _primaryRegular;
+        }
     }
 
     /// <summary>
@@ -180,14 +459,26 @@ internal sealed class FontLoader : IDisposable
     /// <param name="fontSize">Font size.</param>
     /// <param name="spacing">Character spacing.</param>
     /// <returns>The size of the text.</returns>
-    public Vector2 MeasureText(string text, float fontSize, float spacing)
+    public Vector2 MeasureText(
+        string text,
+        float fontSize,
+        float spacing,
+        FontWeight weight = FontWeight.Regular
+    )
     {
         float width = 0;
         float height = fontSize;
 
         foreach (var rune in text.EnumerateRunes())
         {
-            var fontToUse = GetFontForCodepoint(rune.Value);
+            var fontToUse = GetFontForCodepoint(rune.Value, weight);
+            if (!_loggedFontTextureIds.Contains(fontToUse.Texture.Id))
+            {
+                Console.WriteLine(
+                    $"FontLoader: Using font texture {fontToUse.Texture.Id} for codepoint {rune.Value} (weight {weight})"
+                );
+                _loggedFontTextureIds.Add(fontToUse.Texture.Id);
+            }
             var charSize = Raylib.MeasureTextEx(fontToUse, rune.ToString(), fontSize, spacing);
             width += charSize.X;
         }
@@ -209,12 +500,12 @@ internal sealed class FontLoader : IDisposable
         Vector2 position,
         float fontSize,
         float spacing,
-        Color color
+        Color color,
+        FontWeight weight = FontWeight.Regular
     )
     {
         float xOffset = 0;
-        float primaryScale = fontSize / _primaryFont.BaseSize;
-        float symbolScale = fontSize / _symbolFont.BaseSize;
+        // NOTE: primary/font variants can have different BaseSize; compute per glyph
 
         foreach (var rune in text.EnumerateRunes())
         {
@@ -222,16 +513,8 @@ internal sealed class FontLoader : IDisposable
             Font fontToUse;
             float scale;
 
-            if (_primaryGlyphs.Contains(codepoint))
-            {
-                fontToUse = _primaryFont;
-                scale = primaryScale;
-            }
-            else
-            {
-                fontToUse = _symbolFont;
-                scale = symbolScale;
-            }
+            fontToUse = GetFontForCodepoint(codepoint, weight);
+            scale = fontToUse.BaseSize > 0 ? fontSize / fontToUse.BaseSize : 1f;
 
             // Use DrawTextCodepoint for proper Unicode handling
             Vector2 charPos = new(position.X + xOffset, position.Y);
@@ -272,11 +555,12 @@ internal sealed class FontLoader : IDisposable
         float y,
         float fontSize,
         float spacing,
-        Color color
+        Color color,
+        FontWeight weight = FontWeight.Regular
     )
     {
-        var size = MeasureText(text, fontSize, spacing);
-        DrawText(text, new Vector2(centerX - size.X / 2, y), fontSize, spacing, color);
+        var size = MeasureText(text, fontSize, spacing, weight);
+        DrawText(text, new Vector2(centerX - size.X / 2, y), fontSize, spacing, color, weight);
     }
 
     /// <summary>
@@ -294,11 +578,12 @@ internal sealed class FontLoader : IDisposable
         float y,
         float fontSize,
         float spacing,
-        Color color
+        Color color,
+        FontWeight weight = FontWeight.Regular
     )
     {
-        var size = MeasureText(text, fontSize, spacing);
-        DrawText(text, new Vector2(rightX - size.X, y), fontSize, spacing, color);
+        var size = MeasureText(text, fontSize, spacing, weight);
+        DrawText(text, new Vector2(rightX - size.X, y), fontSize, spacing, color, weight);
     }
 
     public void Dispose()
@@ -308,16 +593,39 @@ internal sealed class FontLoader : IDisposable
             return;
         }
 
+        static void UnloadIfCustom(Font f)
+        {
+            if (f.Texture.Id != 0 && f.Texture.Id != Raylib.GetFontDefault().Texture.Id)
+                Raylib.UnloadFont(f);
+        }
+
+        UnloadIfCustom(_primaryRegular);
+        if (_primaryBold.Texture.Id != 0 && _primaryBold.Texture.Id != _primaryRegular.Texture.Id)
+            UnloadIfCustom(_primaryBold);
         if (
-            _primaryFont.Texture.Id != 0
-            && _primaryFont.Texture.Id != Raylib.GetFontDefault().Texture.Id
+            _primaryItalic.Texture.Id != 0
+            && _primaryItalic.Texture.Id != _primaryRegular.Texture.Id
         )
-            Raylib.UnloadFont(_primaryFont);
+            UnloadIfCustom(_primaryItalic);
         if (
-            _symbolFont.Texture.Id != 0
-            && _symbolFont.Texture.Id != Raylib.GetFontDefault().Texture.Id
+            _primaryBoldItalic.Texture.Id != 0
+            && _primaryBoldItalic.Texture.Id != _primaryRegular.Texture.Id
         )
-            Raylib.UnloadFont(_symbolFont);
+            UnloadIfCustom(_primaryBoldItalic);
+        if (
+            _symbolRegular.Texture.Id != 0
+            && _symbolRegular.Texture.Id != Raylib.GetFontDefault().Texture.Id
+        )
+            UnloadIfCustom(_symbolRegular);
+        if (_symbolBold.Texture.Id != 0 && _symbolBold.Texture.Id != _symbolRegular.Texture.Id)
+            UnloadIfCustom(_symbolBold);
+        if (_symbolItalic.Texture.Id != 0 && _symbolItalic.Texture.Id != _symbolRegular.Texture.Id)
+            UnloadIfCustom(_symbolItalic);
+        if (
+            _symbolBoldItalic.Texture.Id != 0
+            && _symbolBoldItalic.Texture.Id != _symbolRegular.Texture.Id
+        )
+            UnloadIfCustom(_symbolBoldItalic);
 
         _disposed = true;
     }

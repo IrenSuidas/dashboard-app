@@ -2,6 +2,14 @@ using Raylib_cs;
 
 namespace EndingApp;
 
+public enum FontWeight
+{
+    Regular,
+    Italic,
+    Bold,
+    BoldItalic,
+}
+
 internal sealed class AppConfig
 {
     public EndingConfig Ending { get; set; } = new();
@@ -26,6 +34,12 @@ internal sealed class AppConfig
         config.Ending.StartDelay = data.GetFloat("ending.endingStartDelay", 2.0f);
         config.Ending.StartText = data.GetString("ending.endingStartText", "Stream Ending");
         config.Ending.StartTextHideTime = data.GetFloat("ending.endingStartTextHideTime", 3.0f);
+        config.Ending.ValueFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.fontWeight", "regular")
+        );
+        config.Ending.SectionFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.sectionFontWeight", "regular")
+        );
 
         // Load color configuration
         var (R, G, B, A) = data.GetColorHex("ending.sectionColorHex", (255, 220, 150, 255));
@@ -67,6 +81,27 @@ internal sealed class EndingConfig
     public float StartDelay { get; set; } = 2.0f;
     public string StartText { get; set; } = "Stream Ending";
     public float StartTextHideTime { get; set; } = 3.0f;
+    public FontWeight ValueFontWeight { get; set; }
+    public FontWeight SectionFontWeight { get; set; }
+
+    public static FontWeight ParseFontWeight(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s))
+            return FontWeight.Regular;
+
+        s = s.Trim().ToLowerInvariant();
+        return s switch
+        {
+            "regular" => FontWeight.Regular,
+            "italic" => FontWeight.Italic,
+            "bold" => FontWeight.Bold,
+            "bold-italic" => FontWeight.BoldItalic,
+            "bolditalic" => FontWeight.BoldItalic,
+            "bold_italic" => FontWeight.BoldItalic,
+            _ => FontWeight.Regular,
+        };
+    }
+
     public Color SectionColor { get; set; } = new Color(255, 220, 150, 255);
     public Color ValuesColor { get; set; } = new Color(255, 255, 255, 255);
     public Color StartTextColor { get; set; } = new Color(255, 255, 255, 255);
