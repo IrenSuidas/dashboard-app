@@ -41,6 +41,7 @@ credits:
       - Salemba_ (Salemba)
       - IrenSuidas (Iren)
   - section: ♢ Dukes and Duchesses (VIPs)
+    twoColumns: true
     values:
       - DaZotto
       - YukienniTokki
@@ -147,11 +148,12 @@ credits:
       - Forgotton Anne
       - Project Zomboid
       - TCG Card Shop Simulator
-  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
+  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
   - section: ♢ Chapter 1
     values:
       - [Unnamed] Kingdom Summer Festival
   - section: ♢ Summer Festival 2022 Participants Shoutout
+    twoColumns: true
     values:
       - Ashleyfashleybobashley
       - GodSpeedXan
@@ -191,8 +193,8 @@ credits:
       - EggiesBenji
       - PhoenixLumina
       - Salemba_
-    twoColumns: true
   - section: ♢ Summer Festival 2022 Raiders
+    twoColumns: true
     values:
       - DeadlyRaven
       - HewwoKookiez
@@ -208,11 +210,11 @@ credits:
       - Friendbndew
       - SquishyBloom
       - GodhandPlusOne
-    twoColumns: true
   - section: ♢ Chapter 2
     values:
       - [Unnamed] Kingdom Birthmonth Botanical Party
   - section: ♢ Birthmonth Celebration 2023 Participants Shoutout
+    twoColumns: true
     values:
       - AleisterCazar
       - Exan_Bloodmoon
@@ -250,8 +252,8 @@ credits:
       - KoizumiShimu
       - Salemba_
       - YummyPotat0
-    twoColumns: true
   - section: ♢ Birthmonth Celebration 2023 Raiders
+    twoColumns: true
     values:
       - Linokii
       - ThubanVT
@@ -260,11 +262,11 @@ credits:
       - Cawfee
       - DrookDane
       - AleisterCazar
-    twoColumns: true
   - section: ♢ Chapter 3
     values:
       - [Unnamed] Kingdom Minecraft Server Launch
   - section: ♢ Unnamed SMP Ribbon Cutting Ceremony Participants
+    twoColumns: true
     values:
       - ConnieAmbershard
       - hylonomus
@@ -279,8 +281,8 @@ credits:
       - KoizumiShimu
       - Senorsalad_
       - SylvieNyxAura
-    twoColumns: true
   - section: ♢ Unnamed SMP Launch Day Shoutouts
+    twoColumns: true
     values:
       - xZech_
       - SylvieNyxAura
@@ -299,11 +301,11 @@ credits:
       - itsJooze
       - ConnieAmbershard
       - ssbKingzilla47
-    twoColumns: true
   - section: ♢ Chapter 4
     values:
       - [Unnamed] Kingdom Starry Starry Party!
   - section: ♢ Starry Starry Party! 2024 Participants Shoutouts
+    twoColumns: true
     values:
       - aki_TONE
       - ChairHere
@@ -337,8 +339,8 @@ credits:
       - SylvieNyxAura
       - ThatDonkus
       - ThubanVT
-    twoColumns: true
   - section: ♢ Starry Starry Party! 2024 Raiders
+    twoColumns: true
     values:
       - universalderek
       - LawdCookies
@@ -352,8 +354,7 @@ credits:
       - Sp4ceCloud
       - SkellyBean18
       - Salemba_
-    twoColumns: true
-  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
+  - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
   - section: ♢ Music
     values:
       - "Mario Kart Wii - Toad's Factory [Remix]"

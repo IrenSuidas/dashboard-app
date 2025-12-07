@@ -127,4 +127,48 @@ internal static class SimpleYamlReader
             ? result
             : defaultValue;
     }
+
+    /// <summary>
+    /// Parses a hex color string (e.g., "#FFDC96" or "FFDC96") to RGBA values.
+    /// Supports 6-character (RGB) and 8-character (RGBA) hex strings.
+    /// </summary>
+    public static (byte R, byte G, byte B, byte A) GetColorHex(
+        this Dictionary<string, string> config,
+        string key,
+        (byte R, byte G, byte B, byte A) defaultValue
+    )
+    {
+        if (!config.TryGetValue(key, out string? value) || string.IsNullOrWhiteSpace(value))
+            return defaultValue;
+
+        // Remove # prefix if present
+        string hex = value.TrimStart('#');
+
+        try
+        {
+            if (hex.Length == 6)
+            {
+                // RGB format
+                byte r = Convert.ToByte(hex[..2], 16);
+                byte g = Convert.ToByte(hex[2..4], 16);
+                byte b = Convert.ToByte(hex[4..6], 16);
+                return (r, g, b, 255);
+            }
+            else if (hex.Length == 8)
+            {
+                // RGBA format
+                byte r = Convert.ToByte(hex[..2], 16);
+                byte g = Convert.ToByte(hex[2..4], 16);
+                byte b = Convert.ToByte(hex[4..6], 16);
+                byte a = Convert.ToByte(hex[6..8], 16);
+                return (r, g, b, a);
+            }
+        }
+        catch
+        {
+            // Invalid hex format, return default
+        }
+
+        return defaultValue;
+    }
 }

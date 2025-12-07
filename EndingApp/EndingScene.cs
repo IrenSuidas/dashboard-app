@@ -208,29 +208,31 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
 
         int fontSize = _config.Ending.FontSize;
         int sectionFontSize = _config.Ending.SectionFontSize;
-        const int lineSpacing = 10;
-        const int sectionSpacing = 60;
-        const int separatorSpacing = 40;
+        const int valueLineSpacing = 4; // Must match DrawCredits
+        const int sectionGap = 8;
+        const int sectionSpacing = 40;
 
         float totalHeight = 0f;
         foreach (var entry in _credits)
         {
             if (entry.IsSeparator)
             {
-                totalHeight += separatorSpacing;
+                totalHeight += fontSize + sectionSpacing;
             }
             else if (entry.Section != null)
             {
-                totalHeight += sectionFontSize + 20;
+                totalHeight += sectionFontSize + sectionGap;
                 if (entry.TwoColumns && entry.Values.Count > 0)
                 {
-                    totalHeight += ((entry.Values.Count + 1) / 2) * (fontSize + lineSpacing);
+                    int total = entry.Values.Count;
+                    int rows = (total + 1) / 2;
+                    totalHeight += rows * (fontSize + valueLineSpacing);
                 }
                 else
                 {
-                    totalHeight += entry.Values.Count * (fontSize + lineSpacing);
+                    totalHeight += entry.Values.Count * (fontSize + valueLineSpacing);
                 }
-                totalHeight += sectionSpacing;
+                totalHeight += sectionSpacing - valueLineSpacing;
             }
         }
         return totalHeight;
@@ -292,8 +294,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
             int fontSize = _config.Ending.FontSize;
             int centerX = _config.Ending.Width / 2;
             int centerY = _config.Ending.Height / 2;
-            Color textColor = Color.White;
-            textColor.A = (byte)(255 * Math.Clamp(_startTextAlpha, 0f, 1f));
+            var textColor = _config.Ending.StartTextColor;
+            textColor.A = (byte)(textColor.A * Math.Clamp(_startTextAlpha, 0f, 1f));
             _fontLoader?.DrawTextCentered(
                 startText,
                 centerX,
@@ -334,85 +336,100 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
 
         int fontSize = _config.Ending.FontSize;
         int sectionFontSize = _config.Ending.SectionFontSize;
-        const int lineSpacing = 10;
-        const int sectionSpacing = 60;
-        const int separatorSpacing = 40;
+        const int valueLineSpacing = 4; // Minimal gap between value lines
+        const int sectionGap = 8; // Small gap between section title and first value
+        const int sectionSpacing = 40; // Larger gap between different sections
         const float charSpacing = 2;
 
         float currentY = _creditsScrollY;
-        int centerX = _config.Ending.Width / 2;
+        // Position credits block using creditsPositionPercentage from config
+        int creditsLeftX = (int)(
+            (_config.Ending.Width * _config.Ending.CreditsPositionPercentage) / 100.0
+        );
 
         foreach (var entry in _credits)
         {
             if (entry.IsSeparator)
             {
-                // Draw separator line centered
-                _fontLoader.DrawTextCentered(
+                // Draw separator - treat as a section for uniform spacing
+                _fontLoader.DrawText(
                     entry.Separator!,
-                    centerX,
-                    currentY,
+                    new Vector2(creditsLeftX, currentY),
                     fontSize,
                     charSpacing,
-                    Color.White
+                    _config.Ending.SectionColor
                 );
-                currentY += separatorSpacing;
+                currentY += fontSize + sectionSpacing;
             }
             else if (entry.Section != null)
             {
-                // Draw section header centered
-                _fontLoader.DrawTextCentered(
+                // Draw section header left-aligned
+                _fontLoader.DrawText(
                     entry.Section,
-                    centerX,
-                    currentY,
+                    new Vector2(creditsLeftX, currentY),
                     sectionFontSize,
                     charSpacing,
-                    new Color(255, 220, 150, 255)
+                    _config.Ending.SectionColor
                 );
-                currentY += sectionFontSize + 20;
+                currentY += sectionFontSize + sectionGap;
 
-                // Draw values
+                // Draw values with minimal spacing
                 if (entry.TwoColumns && entry.Values.Count > 0)
                 {
-                    // Two column layout
-                    int columnWidth = _config.Ending.Width / 3;
-                    int leftColumnX = centerX - columnWidth;
-                    int rightColumnX = centerX + columnWidth / 4;
-
-                    for (int i = 0; i < entry.Values.Count; i++)
+                    // Two column layout: evenly distribute values into two columns
+                    int total = entry.Values.Count;
+                    int rows = (total + 1) / 2;
+                    int col1Count = rows;
+                    int col2Count = total - rows;
+                    float colGap = 32; // Space between columns
+                    float colWidth = 200; // Fixed column width (can be adjusted or measured)
+                    for (int row = 0; row < rows; row++)
                     {
-                        string value = entry.Values[i];
-                        int columnX = (i % 2 == 0) ? leftColumnX : rightColumnX;
-                        float rowY = currentY + (i / 2) * (fontSize + lineSpacing);
-
-                        _fontLoader.DrawTextCentered(
-                            value,
-                            columnX,
-                            rowY,
+                        // Left column value
+                        string left = entry.Values[row];
+                        _fontLoader.DrawText(
+                            left,
+                            new Vector2(creditsLeftX, currentY),
                             fontSize,
                             charSpacing,
-                            Color.White
+                            _config.Ending.ValuesColor
                         );
+
+                        // Right column value (if exists)
+                        int rightIdx = row + rows;
+                        if (rightIdx < total)
+                        {
+                            string right = entry.Values[rightIdx];
+                            _fontLoader.DrawText(
+                                right,
+                                new Vector2(creditsLeftX + colWidth + colGap, currentY),
+                                fontSize,
+                                charSpacing,
+                                _config.Ending.ValuesColor
+                            );
+                        }
+
+                        currentY += fontSize + valueLineSpacing;
                     }
-                    currentY += ((entry.Values.Count + 1) / 2) * (fontSize + lineSpacing);
                 }
                 else
                 {
-                    // Single column layout (centered)
+                    // Single column layout - left-aligned
                     foreach (string value in entry.Values)
                     {
-                        _fontLoader.DrawTextCentered(
+                        _fontLoader.DrawText(
                             value,
-                            centerX,
-                            currentY,
+                            new Vector2(creditsLeftX, currentY),
                             fontSize,
                             charSpacing,
-                            Color.White
+                            _config.Ending.ValuesColor
                         );
-                        currentY += fontSize + lineSpacing;
+                        currentY += fontSize + valueLineSpacing;
                     }
                 }
 
-                currentY += sectionSpacing;
+                // Add larger gap before next section
+                currentY += sectionSpacing - valueLineSpacing;
             }
         }
     }

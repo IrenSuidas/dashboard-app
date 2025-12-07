@@ -279,6 +279,28 @@ internal sealed class FontLoader : IDisposable
         DrawText(text, new Vector2(centerX - size.X / 2, y), fontSize, spacing, color);
     }
 
+    /// <summary>
+    /// Draws text right-aligned at the given position.
+    /// </summary>
+    /// <param name="text">The text to draw.</param>
+    /// <param name="rightX">The X coordinate for the right edge of the text.</param>
+    /// <param name="y">The Y coordinate.</param>
+    /// <param name="fontSize">Font size.</param>
+    /// <param name="spacing">Character spacing.</param>
+    /// <param name="color">Text color.</param>
+    public void DrawTextRightAligned(
+        string text,
+        float rightX,
+        float y,
+        float fontSize,
+        float spacing,
+        Color color
+    )
+    {
+        var size = MeasureText(text, fontSize, spacing);
+        DrawText(text, new Vector2(rightX - size.X, y), fontSize, spacing, color);
+    }
+
     public void Dispose()
     {
         if (_disposed)

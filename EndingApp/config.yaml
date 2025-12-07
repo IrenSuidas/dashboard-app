@@ -14,18 +14,27 @@ ending:
 
   # Cinematic black bars height in pixels (top and bottom)
   # Set to 0 to disable black bars
-  blackBarHeight: 15
+  blackBarHeight: 80
 
   # Font size for credits text
-  fontSize: 26
+  fontSize: 20
 
   # Font size for section headers
-  sectionFontSize: 26
+  sectionFontSize: 20
+
+  # Text colors (hex format: #RRGGBB or #RRGGBBAA)
+  sectionColorHex: "#3c3232"
+  valuesColorHex: "#3c3232"
+
+  # Credits position (0-100 percentage from left to right)
+  # 0 = far left, 50 = center, 100 = far right
+  creditsPositionPercentage: 10
 
   # New ending scene configuration
   endingStartDelay: 2.0
   endingStartText: Stream Ending
   endingStartTextHideTime: 3.0
+  endingStartTextColorHex: "#3c3232"
   endingEndText: Thanks for watching, see you next time!
   endingEndTextHideTime: 5.0
   endingEmote: assets/images/outro-emote.png
