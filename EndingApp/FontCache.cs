@@ -7,7 +7,7 @@ internal static class FontCache
 {
     // Internal Key structure is not used; using composite string keys instead
 
-    private static readonly ConcurrentDictionary<string, (Font font, int refCount)> _fonts = new();
+    private static readonly ConcurrentDictionary<string, (Font font, int refCount)> s_fonts = new();
 
     private static string MakeKey(string path, int size, int[] codepoints)
     {
@@ -28,7 +28,7 @@ internal static class FontCache
         if (string.IsNullOrEmpty(path))
             return default;
         string key = MakeKey(path, size, codepoints);
-        var (font, refCount) = _fonts.AddOrUpdate(
+        var (font, refCount) = s_fonts.AddOrUpdate(
             key,
             k =>
             {
@@ -53,7 +53,7 @@ internal static class FontCache
         if (string.IsNullOrEmpty(path))
             return;
         string key = MakeKey(path, size, codepoints);
-        if (_fonts.TryGetValue(key, out var val))
+        if (s_fonts.TryGetValue(key, out var val))
         {
             val.refCount--;
             Console.WriteLine(
@@ -70,11 +70,11 @@ internal static class FontCache
                 {
                     Console.WriteLine($"FontCache: Error unloading font {path}: {ex.Message}");
                 }
-                _fonts.TryRemove(key, out _);
+                s_fonts.TryRemove(key, out _);
             }
             else
             {
-                _fonts[key] = (val.font, val.refCount);
+                s_fonts[key] = (val.font, val.refCount);
             }
         }
     }
@@ -84,7 +84,7 @@ internal static class FontCache
         if (f.Texture.Id == 0)
             return;
         string? matchKey = null;
-        foreach (var kvp in _fonts)
+        foreach (var kvp in s_fonts)
         {
             if (kvp.Value.font.Texture.Id == f.Texture.Id)
             {
@@ -92,7 +92,7 @@ internal static class FontCache
                 break;
             }
         }
-        if (matchKey != null && _fonts.TryGetValue(matchKey, out var val))
+        if (matchKey != null && s_fonts.TryGetValue(matchKey, out var val))
         {
             val.refCount--;
             Console.WriteLine(
@@ -111,19 +111,19 @@ internal static class FontCache
                         $"FontCache: Error unloading font key {matchKey}: {ex.Message}"
                     );
                 }
-                _fonts.TryRemove(matchKey, out _);
+                s_fonts.TryRemove(matchKey, out _);
             }
             else
             {
-                _fonts[matchKey] = (val.font, val.refCount);
+                s_fonts[matchKey] = (val.font, val.refCount);
             }
         }
     }
 
     public static void DumpState()
     {
-        Console.WriteLine($"FontCache: fonts = {_fonts.Count}");
-        foreach (var kvp in _fonts)
+        Console.WriteLine($"FontCache: fonts = {s_fonts.Count}");
+        foreach (var kvp in s_fonts)
         {
             Console.WriteLine($"FontCache: font {kvp.Key}, refcount = {kvp.Value.refCount}");
         }

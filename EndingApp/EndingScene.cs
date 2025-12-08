@@ -86,9 +86,6 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         // Reload config for hot-reloading support
         _config = AppConfig.Load();
 
-        // Clear transparent window flag for ending scene
-        // Raylib.ClearWindowState(ConfigFlags.TransparentWindow);
-
         // Resize window using config
         Raylib.SetWindowSize(_config.Ending.Width, _config.Ending.Height);
 
