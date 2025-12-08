@@ -1,4 +1,4 @@
-﻿using Raylib_cs;
+using Raylib_cs;
 
 namespace EndingApp;
 
@@ -30,6 +30,27 @@ internal static class Program
             if (endingScene?.IsActive == true)
             {
                 endingScene.Update();
+                // If the scene requested returning to main menu, perform cleanup here and clear the reference.
+                if (endingScene != null && !endingScene.IsActive)
+                {
+                    Console.WriteLine(
+                        "INFO: Program: EndingScene is no longer active; performing cleanup and releasing reference."
+                    );
+                    // Restore the main window state and close audio device
+                    EndingScene.RestoreWindowAndAudioState();
+                    // Cleanup resources
+                    endingScene.Cleanup();
+                    // Dump resource cache to check counts of cached resources
+                    ResourceCache.DumpState();
+                    FontCache.DumpState();
+                    long memAfterCleanup = System
+                        .Diagnostics.Process.GetCurrentProcess()
+                        .PrivateMemorySize64;
+                    Console.WriteLine(
+                        $"INFO: Program: memory after cleanup: {memAfterCleanup / 1024 / 1024} MB"
+                    );
+                    endingScene = null;
+                }
             }
             else
             {
@@ -42,8 +63,22 @@ internal static class Program
                 {
                     if (endingHovered)
                     {
+                        long memBefore = System
+                            .Diagnostics.Process.GetCurrentProcess()
+                            .PrivateMemorySize64;
+                        Console.WriteLine(
+                            $"INFO: Program: memory before starting EndingScene: {memBefore / 1024 / 1024} MB"
+                        );
                         endingScene = new EndingScene(config);
                         endingScene.Start();
+                        ResourceCache.DumpState();
+                        FontCache.DumpState();
+                        long memAfter = System
+                            .Diagnostics.Process.GetCurrentProcess()
+                            .PrivateMemorySize64;
+                        Console.WriteLine(
+                            $"INFO: Program: memory after starting EndingScene: {memAfter / 1024 / 1024} MB (delta {(memAfter - memBefore) / 1024 / 1024} MB)"
+                        );
                     }
                     else if (clipHovered)
                     {

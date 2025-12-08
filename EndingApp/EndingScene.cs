@@ -11,6 +11,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
     private Music _music;
     private FontLoader? _fontLoader;
     private bool _disposed;
+    private bool _cleanedUp;
 
     public void Dispose()
     {
@@ -99,15 +100,22 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             (monitorHeight - _config.Ending.Height) / 2
         );
 
-        // Load background image from config
-        _backgroundTexture = Raylib.LoadTexture(_config.Ending.BackgroundImage);
+        // Load background image from config (use resource cache)
+        _backgroundTexture = ResourceCache.LoadTexture(_config.Ending.BackgroundImage);
 
         // Load credits
         _credits = CreditsReader.Read("credits.yaml");
 
         // Extract codepoints and load fonts using FontLoader
-        // Only the exact characters from credits.yaml are extracted - no full CJK ranges
-        int[] codepoints = FontLoader.ExtractCodepoints(_credits);
+        // Include characters from credits plus StartText, EndText and Copyright text
+        var codepointSet = new HashSet<int>(FontLoader.ExtractCodepoints(_credits));
+        foreach (var rune in (_config.Ending.StartText ?? string.Empty).EnumerateRunes())
+            codepointSet.Add(rune.Value);
+        foreach (var rune in (_config.Ending.EndText ?? string.Empty).EnumerateRunes())
+            codepointSet.Add(rune.Value);
+        foreach (var rune in (_config.Ending.CopyrightText ?? string.Empty).EnumerateRunes())
+            codepointSet.Add(rune.Value);
+        int[] codepoints = [.. codepointSet];
         _fontLoader = new FontLoader();
         _fontLoader.Load(
             "assets/fonts/georgia.ttf",
@@ -120,9 +128,35 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         // Start credits at bottom of screen (outside view)
         _creditsScrollY = _config.Ending.Height;
 
-        // Prepare music but do not play yet
-        Raylib.InitAudioDevice();
-        _music = Raylib.LoadMusicStream(_config.Ending.Music);
+        // Prepare music but do not play yet - init audio only if not already ready
+        if (!Raylib.IsAudioDeviceReady())
+        {
+            Raylib.InitAudioDevice();
+        }
+        _music = ResourceCache.LoadMusic(_config.Ending.Music);
+        // Reset playback position so the music always starts from the beginning when the scene starts.
+        try
+        {
+            if (Raylib.IsAudioDeviceReady())
+            {
+                // Stop and seek to start explicitly, even if returned by cache
+                try
+                {
+                    Raylib.StopMusicStream(_music);
+                }
+                catch { }
+                try
+                {
+                    Raylib.SeekMusicStream(_music, 0f);
+                }
+                catch { }
+                Console.WriteLine($"INFO: MUSIC: Reset playback for {_config.Ending.Music}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WARN: MUSIC: failed to reset playback: {ex.Message}");
+        }
 
         // Calculate dynamic credits scroll speed
         float songDuration = Raylib.GetMusicTimeLength(_music);
@@ -138,6 +172,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _elapsedTime = 0f;
         _musicStarted = false;
         _musicStopped = false;
+        _musicPlayElapsed = 0f;
         _creditsStarted = false;
         _endTextStarted = false;
         _showEndText = false;
@@ -165,9 +200,11 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             !string.IsNullOrEmpty(_config.Ending.EmotePath) && File.Exists(_config.Ending.EmotePath)
         )
         {
-            _emoteTexture = Raylib.LoadTexture(_config.Ending.EmotePath);
+            _emoteTexture = ResourceCache.LoadTexture(_config.Ending.EmotePath);
             _emoteLoaded = true;
         }
+        // Reset cleanup flag (we have re-initialized a new scene)
+        _cleanedUp = false;
         // Reset copyright state
         _copyrightStarted = false;
         _copyrightFadingIn = false;
@@ -188,10 +225,19 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             ) && Raylib.IsKeyPressed(KeyboardKey.Space)
         )
         {
-            // Return to main menu instead of ending the program
-            Console.WriteLine("INFO: EndingScene: ctrl+space pressed - returning to main menu");
-            // Use Cleanup so the scene properly unloads resources and doesn't trigger any extra size/flag changes in Stop().
-            Cleanup();
+            // Return to main menu safely: do not unload resources here. Instead set IsActive false
+            // and allow Program.Main to call Cleanup() in a predictable location.
+            Console.WriteLine(
+                "INFO: EndingScene: ctrl+space pressed - returning to main menu (deferred cleanup)"
+            );
+            // Set flags to stop updates and schedule cleanup
+            IsActive = false;
+            _creditsStarted = false;
+            // Prevent any lingering start text or end text from briefly displaying while main menu resets
+            _showStartText = false;
+            _startTextAlpha = 0f;
+            _showEndText = false;
+            _endTextAlpha = 0f;
             return;
         }
 
@@ -301,7 +347,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         }
 
         // Update music stream if started and not stopped
-        if (_musicStarted && !_musicStopped)
+        if (_musicStarted && !_musicStopped && Raylib.IsAudioDeviceReady())
         {
             Raylib.UpdateMusicStream(_music);
 
@@ -314,7 +360,11 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             if (endedByApi || endedByManual)
             {
                 // Stop playback explicitly and mark stopped to avoid further updates.
-                Raylib.StopMusicStream(_music);
+                try
+                {
+                    Raylib.StopMusicStream(_music);
+                }
+                catch { }
                 _musicStopped = true;
                 _musicStarted = false;
                 Console.WriteLine(
@@ -426,20 +476,22 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
     public void Stop()
     {
-        if (!IsActive)
-            return;
-
-        // Cleanup resources
-        Raylib.UnloadTexture(_backgroundTexture);
-        _fontLoader?.Dispose();
-        if (_emoteLoaded)
+        // Ensure resources are cleaned and the window is restored when stopping normally.
+        if (!_cleanedUp)
         {
-            Raylib.UnloadTexture(_emoteTexture);
-            _emoteLoaded = false;
+            Cleanup();
         }
-        Raylib.UnloadMusicStream(_music);
-        Raylib.CloseAudioDevice();
 
+        RestoreWindowAndAudioState();
+        IsActive = false;
+    }
+
+    /// <summary>
+    /// Restore the main window settings and shut down audio safely.
+    /// Should be called when returning to the main menu.
+    /// </summary>
+    public static void RestoreWindowAndAudioState()
+    {
         // Restore transparent window flag for main menu
         Raylib.SetWindowState(ConfigFlags.TransparentWindow);
 
@@ -451,7 +503,15 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         int monitorHeight = Raylib.GetMonitorHeight(Raylib.GetCurrentMonitor());
         Raylib.SetWindowPosition((monitorWidth - 400) / 2, (monitorHeight - 200) / 2);
 
-        IsActive = false;
+        // Close audio device if it is ready
+        if (Raylib.IsAudioDeviceReady())
+        {
+            try
+            {
+                Raylib.CloseAudioDevice();
+            }
+            catch { }
+        }
     }
 
     public void Draw()
@@ -463,14 +523,21 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, Color.Black);
 
         // Draw background image first (we overlay a solid rectangle later to fade to plain color)
-        Raylib.DrawTexturePro(
-            _backgroundTexture,
-            new Rectangle(0, 0, _backgroundTexture.Width, _backgroundTexture.Height),
-            new Rectangle(0, 0, _config.Ending.Width, _config.Ending.Height),
-            new Vector2(0, 0),
-            0f,
-            Color.White
-        );
+        if (_backgroundTexture.Id != 0)
+        {
+            Raylib.DrawTexturePro(
+                _backgroundTexture,
+                new Rectangle(0, 0, _backgroundTexture.Width, _backgroundTexture.Height),
+                new Rectangle(0, 0, _config.Ending.Width, _config.Ending.Height),
+                new Vector2(0, 0),
+                0f,
+                Color.White
+            );
+        }
+        else
+        {
+            Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, Color.Black);
+        }
         // Draw overlay background rectangle (fades in via _endBackgroundAlpha)
         if (_endBackgroundAlpha > 0f)
         {
@@ -741,19 +808,96 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
     public void Cleanup()
     {
+        if (_cleanedUp)
+            return;
+
+        // Log memory use to help track potential leaks
+        long memBefore = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
+        Console.WriteLine($"INFO: Cleanup: memory before cleanup {memBefore / 1024 / 1024} MB");
+
         if (IsActive)
         {
-            Raylib.UnloadTexture(_backgroundTexture);
-            _fontLoader?.Dispose();
-            if (_emoteLoaded)
+            // Unload only if the texture handles are valid
+            try
             {
-                Raylib.UnloadTexture(_emoteTexture);
+                if (_backgroundTexture.Id != 0)
+                {
+                    // Release the cached texture via path
+                    ResourceCache.ReleaseTexture(_config.Ending.BackgroundImage);
+                    _backgroundTexture = default;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"WARN: Cleanup: failed to unload background texture: {ex.Message}"
+                );
+            }
+
+            _fontLoader?.Dispose();
+            _fontLoader = null;
+
+            if (_emoteLoaded && _emoteTexture.Id != 0)
+            {
+                try
+                {
+                    ResourceCache.ReleaseTexture(_config.Ending.EmotePath);
+                    _emoteTexture = default;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"WARN: Cleanup: failed to unload emote texture: {ex.Message}"
+                    );
+                }
                 _emoteLoaded = false;
             }
-            Raylib.UnloadMusicStream(_music);
-            Raylib.CloseAudioDevice();
+
+            try
+            {
+                // Ensure any playing music is stopped before release
+                try
+                {
+                    if (Raylib.IsAudioDeviceReady())
+                        Raylib.StopMusicStream(_music);
+                }
+                catch { }
+                ResourceCache.ReleaseMusic(_config.Ending.Music);
+                _music = default;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WARN: Cleanup: failed to unload music stream: {ex.Message}");
+            }
+
+            // Do NOT close audio device here: leaving it open prevents races while UI returns to main menu
             IsActive = false;
         }
+        else
+        {
+            // If not active, attempt to safely unload any remaining allocated textures and fonts
+            try
+            {
+                if (_backgroundTexture.Id != 0)
+                {
+                    ResourceCache.ReleaseTexture(_config.Ending.BackgroundImage);
+                    _backgroundTexture = default;
+                }
+            }
+            catch { }
+        }
+
+        _cleanedUp = true;
+        // Clear credits to allow memory to be freed.
+        _credits.Clear();
+
+        // Force a GC collection and wait to help ensure managed resources are reclaimed.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        long memAfter = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
+        Console.WriteLine(
+            $"INFO: Cleanup: memory after cleanup and GC {memAfter / 1024 / 1024} MB (delta {((memAfter - memBefore) / 1024 / 1024)} MB)"
+        );
     }
 
     [GeneratedRegex("(?:,|\\r?\\n|\\\\n)")]

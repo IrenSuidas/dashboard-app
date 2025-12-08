@@ -71,16 +71,20 @@ internal sealed class FontLoader : IDisposable
     {
         // ASCII codepoints for primary font (32-126)
         int[] asciiCodepoints = [.. Enumerable.Range(32, 95)];
+        // Include a small set of common extended Latin characters into the primary font
+        // so that symbols like © (U+00A9) render in the primary font style when possible.
+        var primaryCpSet = new HashSet<int>(asciiCodepoints);
+        foreach (int cp in codepoints)
+        {
+            if (cp <= 255) // include Latin-1 range for primary font
+                primaryCpSet.Add(cp);
+        }
+        int[] primaryCodepoints = primaryCpSet.OrderBy(x => x).ToArray();
 
         // Load primary font with ASCII only
         if (File.Exists(primaryFontPath))
         {
-            _primaryRegular = Raylib.LoadFontEx(
-                primaryFontPath,
-                fontSize,
-                asciiCodepoints,
-                asciiCodepoints.Length
-            );
+            _primaryRegular = FontCache.LoadFont(primaryFontPath, fontSize, primaryCodepoints);
             Raylib.SetTextureFilter(_primaryRegular.Texture, textureFilter);
             Console.WriteLine(
                 $"FontLoader: Primary regular font loaded from {primaryFontPath} ({asciiCodepoints.Length} glyphs)"
@@ -128,12 +132,7 @@ internal sealed class FontLoader : IDisposable
                 {
                     try
                     {
-                        var f = Raylib.LoadFontEx(
-                            candidatePath,
-                            fontSize,
-                            asciiCodepoints,
-                            asciiCodepoints.Length
-                        );
+                        var f = FontCache.LoadFont(candidatePath, fontSize, primaryCodepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
                         Console.WriteLine(
                             $"FontLoader: Primary variant loaded from {candidatePath}"
@@ -159,12 +158,7 @@ internal sealed class FontLoader : IDisposable
                 {
                     try
                     {
-                        var f = Raylib.LoadFontEx(
-                            candidatePath2,
-                            fontSize,
-                            asciiCodepoints,
-                            asciiCodepoints.Length
-                        );
+                        var f = FontCache.LoadFont(candidatePath2, fontSize, primaryCodepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
                         Console.WriteLine(
                             $"FontLoader: Primary variant loaded from {candidatePath2}"
@@ -185,12 +179,7 @@ internal sealed class FontLoader : IDisposable
         // Load symbol font with all codepoints (symbols + Japanese)
         if (File.Exists(symbolFontPath))
         {
-            _symbolRegular = Raylib.LoadFontEx(
-                symbolFontPath,
-                fontSize,
-                codepoints,
-                codepoints.Length
-            );
+            _symbolRegular = FontCache.LoadFont(symbolFontPath, fontSize, codepoints);
             Raylib.SetTextureFilter(_symbolRegular.Texture, textureFilter);
             Console.WriteLine(
                 $"FontLoader: Symbol regular font loaded from {symbolFontPath} ({_symbolRegular.GlyphCount} glyphs)"
@@ -259,12 +248,7 @@ internal sealed class FontLoader : IDisposable
                 {
                     try
                     {
-                        var f = Raylib.LoadFontEx(
-                            candidatePath,
-                            fontSize,
-                            codepoints,
-                            codepoints.Length
-                        );
+                        var f = FontCache.LoadFont(candidatePath, fontSize, codepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
                         Console.WriteLine(
                             $"FontLoader: Symbol variant loaded from {candidatePath}"
@@ -288,12 +272,7 @@ internal sealed class FontLoader : IDisposable
                 {
                     try
                     {
-                        var f = Raylib.LoadFontEx(
-                            candidatePath2,
-                            fontSize,
-                            codepoints,
-                            codepoints.Length
-                        );
+                        var f = FontCache.LoadFont(candidatePath2, fontSize, codepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
                         Console.WriteLine(
                             $"FontLoader: Symbol variant loaded from {candidatePath2}"
@@ -385,6 +364,26 @@ internal sealed class FontLoader : IDisposable
         }
 
         return [.. codepointSet];
+    }
+
+    /// <summary>
+    /// Extracts unique codepoints from a single string. Useful for singling out glyphs not present in credits: start text, end text, etc.
+    /// </summary>
+    /// <param name="s">The string to extract runes from.</param>
+    /// <returns>Array of unique codepoints.</returns>
+    public static int[] ExtractCodepointsFromString(string? s)
+    {
+        var cpSet = new HashSet<int>();
+        if (string.IsNullOrEmpty(s))
+            return [.. cpSet];
+        foreach (var rune in s.EnumerateRunes())
+            cpSet.Add(rune.Value);
+
+        // Add ASCII baseline (32-126) to ensure ASCII glyphs are available in primary
+        for (int i = 32; i <= 126; i++)
+            cpSet.Add(i);
+
+        return [.. cpSet];
     }
 
     /// <summary>
@@ -593,40 +592,80 @@ internal sealed class FontLoader : IDisposable
             return;
         }
 
-        static void UnloadIfCustom(Font f)
+        static void UnloadIfCustom(Font f, string name, string? pathKey = null)
         {
             if (f.Texture.Id != 0 && f.Texture.Id != Raylib.GetFontDefault().Texture.Id)
-                Raylib.UnloadFont(f);
+            {
+                Console.WriteLine($"FontLoader: unloading font {name} (texture id {f.Texture.Id})");
+                // Prefer releasing via font cache by instance
+                try
+                {
+                    FontCache.ReleaseFont(f);
+                }
+                catch
+                {
+                    try
+                    {
+                        Raylib.UnloadFont(f);
+                    }
+                    catch { }
+                }
+            }
         }
 
-        UnloadIfCustom(_primaryRegular);
+        UnloadIfCustom(_primaryRegular, "primaryRegular");
         if (_primaryBold.Texture.Id != 0 && _primaryBold.Texture.Id != _primaryRegular.Texture.Id)
-            UnloadIfCustom(_primaryBold);
+            UnloadIfCustom(_primaryBold, "primaryBold");
         if (
             _primaryItalic.Texture.Id != 0
             && _primaryItalic.Texture.Id != _primaryRegular.Texture.Id
         )
-            UnloadIfCustom(_primaryItalic);
+            UnloadIfCustom(_primaryItalic, "primaryItalic");
         if (
             _primaryBoldItalic.Texture.Id != 0
             && _primaryBoldItalic.Texture.Id != _primaryRegular.Texture.Id
         )
-            UnloadIfCustom(_primaryBoldItalic);
+            UnloadIfCustom(_primaryBoldItalic, "primaryBoldItalic");
         if (
             _symbolRegular.Texture.Id != 0
             && _symbolRegular.Texture.Id != Raylib.GetFontDefault().Texture.Id
         )
-            UnloadIfCustom(_symbolRegular);
+            UnloadIfCustom(_symbolRegular, "symbolRegular");
         if (_symbolBold.Texture.Id != 0 && _symbolBold.Texture.Id != _symbolRegular.Texture.Id)
-            UnloadIfCustom(_symbolBold);
+            UnloadIfCustom(_symbolBold, "symbolBold");
         if (_symbolItalic.Texture.Id != 0 && _symbolItalic.Texture.Id != _symbolRegular.Texture.Id)
-            UnloadIfCustom(_symbolItalic);
+            UnloadIfCustom(_symbolItalic, "symbolItalic");
         if (
             _symbolBoldItalic.Texture.Id != 0
             && _symbolBoldItalic.Texture.Id != _symbolRegular.Texture.Id
         )
-            UnloadIfCustom(_symbolBoldItalic);
+            UnloadIfCustom(_symbolBoldItalic, "symbolBoldItalic");
+
+        // Clear references and logging sets so no managed objects keep memory alive
+        _loggedFontTextureIds.Clear();
+        _primaryGlyphs.Clear();
+        _symbolGlyphs.Clear();
+        _primaryRegular = default;
+        _primaryBold = default;
+        _primaryItalic = default;
+        _primaryBoldItalic = default;
+        _symbolRegular = default;
+        _symbolBold = default;
+        _symbolItalic = default;
+        _symbolBoldItalic = default;
 
         _disposed = true;
+        // Null out fields to allow GC to reclaim references
+        _primaryRegular = default;
+        _primaryBold = default;
+        _primaryItalic = default;
+        _primaryBoldItalic = default;
+        _symbolRegular = default;
+        _symbolBold = default;
+        _symbolItalic = default;
+        _symbolBoldItalic = default;
+        // Force GC to allow memory to be reclaimed by the runtime sooner
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
     }
 }
