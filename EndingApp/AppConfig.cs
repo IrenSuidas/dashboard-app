@@ -34,6 +34,10 @@ internal sealed class AppConfig
         config.Ending.StartDelay = data.GetFloat("ending.endingStartDelay", 2.0f);
         config.Ending.StartText = data.GetString("ending.endingStartText", "Stream Ending");
         config.Ending.StartTextHideTime = data.GetFloat("ending.endingStartTextHideTime", 3.0f);
+        config.Ending.StartTextFontSize = data.GetInt("ending.endingStartTextFontSize", 32);
+        config.Ending.StartTextFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.endingStartTextFontWeight", "regular")
+        );
         config.Ending.ValueFontWeight = EndingConfig.ParseFontWeight(
             data.GetString("ending.fontWeight", "regular")
         );
@@ -64,6 +68,67 @@ internal sealed class AppConfig
             startTextColor.A
         );
 
+        // End text properties
+        config.Ending.EndText = data.GetString("ending.endingEndText", config.Ending.EndText);
+        config.Ending.EndTextHideTime = data.GetFloat(
+            "ending.endingEndTextHideTime",
+            config.Ending.EndTextHideTime
+        );
+        config.Ending.EndTextFontSize = data.GetInt(
+            "ending.endingEndTextFontSize",
+            config.Ending.EndTextFontSize
+        );
+        config.Ending.EndTextFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.endingEndTextFontWeight", "regular")
+        );
+        var endTextColor = data.GetColorHex("ending.endingEndTextColorHex", (255, 255, 255, 255));
+        config.Ending.EndTextColor = new Color(
+            endTextColor.R,
+            endTextColor.G,
+            endTextColor.B,
+            endTextColor.A
+        );
+        // End text background color (plain background to show behind end text/emote)
+        var endBgColor = data.GetColorHex("ending.endingEndBackgroundColorHex", (34, 34, 34, 255));
+        config.Ending.EndBackgroundColor = new Color(
+            endBgColor.R,
+            endBgColor.G,
+            endBgColor.B,
+            endBgColor.A
+        );
+        config.Ending.EndBackgroundFadeDuration = data.GetFloat(
+            "ending.endingEndBackgroundFadeDuration",
+            0.5f
+        );
+        // EndText fade durations (default 1.5s each — was 0.5s; user requested +1 second)
+        config.Ending.EndTextFadeInDuration = data.GetFloat(
+            "ending.endingEndTextFadeInDuration",
+            1.5f
+        );
+        config.Ending.EndTextFadeOutDuration = data.GetFloat(
+            "ending.endingEndTextFadeOutDuration",
+            1.5f
+        );
+        // Emote path
+        config.Ending.EmotePath = data.GetString("ending.endingEmote", "");
+        // Copyright text will be shown after the end text fades out
+        config.Ending.CopyrightText = data.GetString("ending.copyrightText", "");
+        config.Ending.CopyrightFontSize = data.GetInt("ending.copyrightFontSize", 18);
+        config.Ending.CopyrightFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.copyrightFontWeight", "regular")
+        );
+        var copyrightColor = data.GetColorHex("ending.copyrightColorHex", (200, 200, 200, 255));
+        config.Ending.CopyrightColor = new Color(
+            copyrightColor.R,
+            copyrightColor.G,
+            copyrightColor.B,
+            copyrightColor.A
+        );
+        config.Ending.CopyrightFadeInDuration = data.GetFloat(
+            "ending.copyrightFadeInDuration",
+            1.0f
+        );
+
         return config;
     }
 }
@@ -81,8 +146,16 @@ internal sealed class EndingConfig
     public float StartDelay { get; set; } = 2.0f;
     public string StartText { get; set; } = "Stream Ending";
     public float StartTextHideTime { get; set; } = 3.0f;
+    public int StartTextFontSize { get; set; } = 32;
     public FontWeight ValueFontWeight { get; set; }
     public FontWeight SectionFontWeight { get; set; }
+    public FontWeight StartTextFontWeight { get; set; }
+
+    // New end text configuration
+    public string EndText { get; set; } = "Thanks for watching, see you next time!";
+    public float EndTextHideTime { get; set; } = 5.0f;
+    public int EndTextFontSize { get; set; } = 32;
+    public FontWeight EndTextFontWeight { get; set; } = FontWeight.Regular;
 
     public static FontWeight ParseFontWeight(string s)
     {
@@ -105,4 +178,15 @@ internal sealed class EndingConfig
     public Color SectionColor { get; set; } = new Color(255, 220, 150, 255);
     public Color ValuesColor { get; set; } = new Color(255, 255, 255, 255);
     public Color StartTextColor { get; set; } = new Color(255, 255, 255, 255);
+    public Color EndTextColor { get; set; } = new Color(255, 255, 255, 255);
+    public Color EndBackgroundColor { get; set; } = new Color(34, 34, 34, 255);
+    public float EndBackgroundFadeDuration { get; set; } = 0.5f;
+    public float EndTextFadeInDuration { get; set; } = 1.5f;
+    public float EndTextFadeOutDuration { get; set; } = 1.5f;
+    public string EmotePath { get; set; } = "";
+    public string CopyrightText { get; set; } = "";
+    public int CopyrightFontSize { get; set; } = 18;
+    public FontWeight CopyrightFontWeight { get; set; } = FontWeight.Regular;
+    public Color CopyrightColor { get; set; } = new Color(200, 200, 200, 255);
+    public float CopyrightFadeInDuration { get; set; } = 1.0f;
 }

@@ -1,9 +1,10 @@
 using System.Numerics;
+using System.Text.RegularExpressions;
 using Raylib_cs;
 
 namespace EndingApp;
 
-internal sealed class EndingScene(AppConfig config) : IDisposable
+internal sealed partial class EndingScene(AppConfig config) : IDisposable
 {
     private AppConfig _config = config;
     private Texture2D _backgroundTexture;
@@ -39,6 +40,7 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
     private float _creditsScrollSpeed; // dynamically calculated
     private float _songDuration;
     private float _musicPlayElapsed; // Manual timer for music playback
+    private float _creditsHeight;
 
     // State for intro sequence
     private float _elapsedTime;
@@ -53,6 +55,28 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
     // Fade-in state for start text
     private bool _startTextFadeIn;
     private float _startTextFadeInElapsed;
+
+    // End text state
+    private bool _endTextStarted;
+    private bool _showEndText;
+    private float _endTextAlpha;
+    private bool _endTextFading;
+    private float _endTextFadeElapsed;
+    private bool _endTextFadeIn;
+    private float _endTextFadeInElapsed;
+    private float _endTextShowElapsed;
+    private Texture2D _emoteTexture;
+    private bool _emoteLoaded;
+    private bool _endBackgroundActive; // When true, draw plain background color instead of image
+    private bool _endBackgroundFading;
+    private float _endBackgroundFadeElapsed;
+    private float _endBackgroundAlpha;
+
+    // Copyright text state
+    private bool _copyrightStarted;
+    private bool _copyrightFadingIn;
+    private float _copyrightFadeElapsed;
+    private float _copyrightAlpha;
 
     public bool IsActive { get; private set; }
 
@@ -106,6 +130,7 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         _musicStopped = false;
         float scrollTime = Math.Max(songDuration - 15f, 2f); // minimum 2 seconds to avoid div by zero
         float creditsHeight = CalculateCreditsHeight();
+        _creditsHeight = creditsHeight;
         float scrollDistance = _config.Ending.Height + creditsHeight;
         _creditsScrollSpeed = scrollDistance / scrollTime;
 
@@ -114,6 +139,17 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         _musicStarted = false;
         _musicStopped = false;
         _creditsStarted = false;
+        _endTextStarted = false;
+        _showEndText = false;
+        _endTextAlpha = 0f;
+        _endTextFading = false;
+        _endTextFadeElapsed = 0f;
+        _endTextFadeIn = false;
+        _endTextFadeInElapsed = 0f;
+        _endBackgroundActive = false;
+        _endBackgroundFading = false;
+        _endBackgroundFadeElapsed = 0f;
+        _endBackgroundAlpha = 0f;
         _showStartText = false;
         _startTextAlpha = 0f;
         _startTextFading = false;
@@ -122,6 +158,21 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         _startTextFadeInElapsed = 0f;
 
         IsActive = true;
+
+        // Load emote if provided
+        _emoteLoaded = false;
+        if (
+            !string.IsNullOrEmpty(_config.Ending.EmotePath) && File.Exists(_config.Ending.EmotePath)
+        )
+        {
+            _emoteTexture = Raylib.LoadTexture(_config.Ending.EmotePath);
+            _emoteLoaded = true;
+        }
+        // Reset copyright state
+        _copyrightStarted = false;
+        _copyrightFadingIn = false;
+        _copyrightFadeElapsed = 0f;
+        _copyrightAlpha = 0f;
     }
 
     public void Update()
@@ -137,7 +188,10 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
             ) && Raylib.IsKeyPressed(KeyboardKey.Space)
         )
         {
-            Stop();
+            // Return to main menu instead of ending the program
+            Console.WriteLine("INFO: EndingScene: ctrl+space pressed - returning to main menu");
+            // Use Cleanup so the scene properly unloads resources and doesn't trigger any extra size/flag changes in Stop().
+            Cleanup();
             return;
         }
 
@@ -147,8 +201,8 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         float startDelay = _config.Ending.StartDelay;
         float startTextHideTime = _config.Ending.StartTextHideTime;
 
-        // Start music and credits after delay
-        if (!_musicStarted && _elapsedTime >= startDelay)
+        // Start music and credits after delay (only if music hasn't been started or stopped already)
+        if (!_musicStarted && !_musicStopped && _elapsedTime >= startDelay)
         {
             Raylib.PlayMusicStream(_music);
             _musicStarted = true;
@@ -199,6 +253,53 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
             _creditsScrollY -= _creditsScrollSpeed * dt;
         }
 
+        // Check if credits have finished scrolling off-screen to start end-text sequence
+        if (
+            _creditsStarted
+            && !_endTextStarted
+            && _creditsHeight > 0f
+            && _creditsScrollY <= -_creditsHeight
+        )
+        {
+            // Start end text sequence
+            _endTextStarted = true;
+            _showEndText = true;
+            _endTextFadeIn = true;
+            _endTextFadeInElapsed = 0f;
+            _endTextAlpha = 0f;
+            _endTextShowElapsed = 0f;
+            // Always set plain background when the end-text starts in case we missed the 1s pre-trigger
+            if (!_endBackgroundActive)
+            {
+                _endBackgroundActive = true;
+            }
+        }
+        // Activate plain end background 1s before the end text fades in so we can switch to a solid background
+        if (!_endBackgroundActive && _creditsStarted && _creditsHeight > 0f)
+        {
+            // If the credits will reach the finish line in about 1 second of scrolling time
+            float pxBeforeEnd = _creditsScrollSpeed * 1f; // pixels traveled in 1 second
+            if (_creditsScrollY <= -_creditsHeight + pxBeforeEnd)
+            {
+                _endBackgroundActive = true;
+                _endBackgroundFading = true;
+                _endBackgroundFadeElapsed = 0f;
+            }
+        }
+
+        // Update end background fade progress if active
+        if (_endBackgroundFading)
+        {
+            _endBackgroundFadeElapsed += dt;
+            float duration = Math.Max(0.001f, _config.Ending.EndBackgroundFadeDuration);
+            _endBackgroundAlpha = Math.Clamp(_endBackgroundFadeElapsed / duration, 0f, 1f);
+            if (_endBackgroundAlpha >= 1f)
+            {
+                _endBackgroundAlpha = 1f;
+                _endBackgroundFading = false;
+            }
+        }
+
         // Update music stream if started and not stopped
         if (_musicStarted && !_musicStopped)
         {
@@ -222,6 +323,65 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                     _songDuration,
                     played
                 );
+            }
+        }
+
+        // Update end text fading/visibility timers
+        if (_showEndText)
+        {
+            if (_endTextFadeIn)
+            {
+                _endTextFadeInElapsed += dt;
+                float fadeInDuration = Math.Max(0.001f, _config.Ending.EndTextFadeInDuration);
+                _endTextAlpha = Math.Clamp(_endTextFadeInElapsed / fadeInDuration, 0f, 1f);
+                if (_endTextAlpha >= 1f)
+                {
+                    _endTextAlpha = 1f;
+                    _endTextFadeIn = false;
+                }
+            }
+            else if (!_endTextFading)
+            {
+                _endTextShowElapsed += dt;
+                if (_endTextShowElapsed >= _config.Ending.EndTextHideTime)
+                {
+                    _endTextFading = true;
+                    _endTextFadeElapsed = 0f;
+                }
+            }
+
+            if (_endTextFading)
+            {
+                _endTextFadeElapsed += dt;
+                float fadeDuration = Math.Max(0.001f, _config.Ending.EndTextFadeOutDuration);
+                _endTextAlpha = 1f - (_endTextFadeElapsed / fadeDuration);
+                if (_endTextAlpha <= 0f)
+                {
+                    _showEndText = false;
+                    _endTextFading = false;
+                    _endTextAlpha = 0f;
+                    // Start copyright fade-in if configured and not started already
+                    if (!string.IsNullOrEmpty(_config.Ending.CopyrightText) && !_copyrightStarted)
+                    {
+                        _copyrightStarted = true;
+                        _copyrightFadingIn = true;
+                        _copyrightFadeElapsed = 0f;
+                        _copyrightAlpha = 0f;
+                    }
+                }
+            }
+        }
+
+        // Update copyright fade-in if active
+        if (_copyrightFadingIn)
+        {
+            _copyrightFadeElapsed += dt;
+            float dur = Math.Max(0.001f, _config.Ending.CopyrightFadeInDuration);
+            _copyrightAlpha = Math.Clamp(_copyrightFadeElapsed / dur, 0f, 1f);
+            if (_copyrightAlpha >= 1f)
+            {
+                _copyrightAlpha = 1f;
+                _copyrightFadingIn = false;
             }
         }
     }
@@ -272,6 +432,11 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         // Cleanup resources
         Raylib.UnloadTexture(_backgroundTexture);
         _fontLoader?.Dispose();
+        if (_emoteLoaded)
+        {
+            Raylib.UnloadTexture(_emoteTexture);
+            _emoteLoaded = false;
+        }
         Raylib.UnloadMusicStream(_music);
         Raylib.CloseAudioDevice();
 
@@ -297,7 +462,7 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         // Draw a fullscreen opaque black rectangle first to block transparency
         Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, Color.Black);
 
-        // Draw background image (scaled to fit window using config dimensions)
+        // Draw background image first (we overlay a solid rectangle later to fade to plain color)
         Raylib.DrawTexturePro(
             _backgroundTexture,
             new Rectangle(0, 0, _backgroundTexture.Width, _backgroundTexture.Height),
@@ -306,6 +471,15 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
             0f,
             Color.White
         );
+        // Draw overlay background rectangle (fades in via _endBackgroundAlpha)
+        if (_endBackgroundAlpha > 0f)
+        {
+            var bg = _config.Ending.EndBackgroundColor;
+            byte a = (byte)Math.Clamp(bg.A * _endBackgroundAlpha, 0f, 255f);
+            // Set alpha on the local copy then draw
+            bg.A = a;
+            Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, bg);
+        }
 
         // Draw scrolling credits only after credits started
         if (_creditsStarted)
@@ -317,7 +491,7 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         if (_showStartText && !string.IsNullOrEmpty(_config.Ending.StartText))
         {
             string startText = _config.Ending.StartText;
-            int fontSize = _config.Ending.FontSize;
+            int fontSize = _config.Ending.StartTextFontSize;
             int centerX = _config.Ending.Width / 2;
             int centerY = _config.Ending.Height / 2;
             var textColor = _config.Ending.StartTextColor;
@@ -328,7 +502,107 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
                 centerY - fontSize / 2,
                 fontSize,
                 2,
-                textColor
+                textColor,
+                _config.Ending.StartTextFontWeight
+            );
+        }
+
+        // Draw ending endText after credits have finished and it's active
+        if (_showEndText && !string.IsNullOrEmpty(_config.Ending.EndText) && _fontLoader != null)
+        {
+            string endText = _config.Ending.EndText;
+            int fontSize = _config.Ending.EndTextFontSize;
+            int centerX = _config.Ending.Width / 2;
+            int centerY = _config.Ending.Height / 2;
+            var endTextColor = _config.Ending.EndTextColor;
+            endTextColor.A = (byte)(endTextColor.A * Math.Clamp(_endTextAlpha, 0f, 1f));
+
+            // Split into lines on comma or literal \n or actual newline
+            var lines = MyRegex()
+                .Split(endText)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .ToList();
+            float lineSpacing = 6f;
+
+            // Compute total height for the text block
+            float totalHeight = 0f;
+            List<float> lineHeights = new List<float>();
+            foreach (string? line in lines)
+            {
+                var size = _fontLoader.MeasureText(
+                    line,
+                    fontSize,
+                    2,
+                    _config.Ending.EndTextFontWeight
+                );
+                lineHeights.Add(size.Y);
+                totalHeight += size.Y;
+            }
+            if (lines.Count > 1)
+                totalHeight += (lines.Count - 1) * lineSpacing;
+
+            // If emote exists, include it with a spacing in the combined height so the block is centered
+            float emoteSpacing = 8f;
+            float emoteHeight = 0f;
+            if (_emoteLoaded && _emoteTexture.Height != 0)
+            {
+                emoteHeight = _emoteTexture.Height; // we draw at scale 1f
+            }
+
+            float combinedHeight =
+                totalHeight + (emoteHeight > 0 ? (emoteSpacing + emoteHeight) : 0f);
+            float curY = centerY - (combinedHeight / 2f);
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i];
+                _fontLoader?.DrawTextCentered(
+                    line,
+                    centerX,
+                    curY,
+                    fontSize,
+                    2,
+                    endTextColor,
+                    _config.Ending.EndTextFontWeight
+                );
+                curY += lineHeights[i] + lineSpacing;
+            }
+
+            // Draw emote below the end text with same alpha as the end text
+            if (_emoteLoaded && _emoteTexture.Width != 0)
+            {
+                int emoteWidth = _emoteTexture.Width;
+                int emoteHeightPx = _emoteTexture.Height;
+                float emoteX = centerX - emoteWidth / 2f;
+                float emoteY = curY + emoteSpacing;
+                byte emoteAlpha = (byte)(Math.Clamp(_endTextAlpha, 0f, 1f) * 255f);
+                var emoteColor = new Color(255, 255, 255, (int)emoteAlpha);
+                Raylib.DrawTextureEx(
+                    _emoteTexture,
+                    new Vector2(emoteX, emoteY),
+                    0f,
+                    1f,
+                    emoteColor
+                );
+            }
+        }
+
+        // Draw copyright text centered after end text fades out
+        if (_copyrightStarted && !string.IsNullOrEmpty(_config.Ending.CopyrightText))
+        {
+            int cFontSize = _config.Ending.CopyrightFontSize;
+            int centerX = _config.Ending.Width / 2;
+            int centerY = _config.Ending.Height / 2;
+            var copyColor = _config.Ending.CopyrightColor;
+            copyColor.A = (byte)(copyColor.A * Math.Clamp(_copyrightAlpha, 0f, 1f));
+            _fontLoader?.DrawTextCentered(
+                _config.Ending.CopyrightText,
+                centerX,
+                centerY - cFontSize / 2,
+                cFontSize,
+                2,
+                copyColor,
+                _config.Ending.CopyrightFontWeight
             );
         }
 
@@ -471,9 +745,17 @@ internal sealed class EndingScene(AppConfig config) : IDisposable
         {
             Raylib.UnloadTexture(_backgroundTexture);
             _fontLoader?.Dispose();
+            if (_emoteLoaded)
+            {
+                Raylib.UnloadTexture(_emoteTexture);
+                _emoteLoaded = false;
+            }
             Raylib.UnloadMusicStream(_music);
             Raylib.CloseAudioDevice();
             IsActive = false;
         }
     }
+
+    [GeneratedRegex("(?:,|\\r?\\n|\\\\n)")]
+    private static partial Regex MyRegex();
 }

@@ -32,15 +32,34 @@ ending:
 
   # Credits position (0-100 percentage from left to right)
   # 0 = far left, 50 = center, 100 = far right
-  creditsPositionPercentage: 50
+  creditsPositionPercentage: 10
 
   # New ending scene configuration
   endingStartDelay: 2.0
   endingStartText: Stream Ending
   endingStartTextHideTime: 3.0
-
   endingStartTextColorHex: "#3c3232"
+  endingStartTextFontSize: 80
+  endingStartTextFontWeight: bold-italic
+
   endingEndText: Thanks for watching, see you next time!
   endingEndTextHideTime: 5.0
+  # End text font size and weight
+  endingEndTextFontSize: 40
+  endingEndTextFontWeight: bold
+  endingEndTextColorHex: "#c8c8c8"
+  # Background color to switch to shortly before end text appears (hex). Default is #222.
+  endingEndBackgroundColorHex: "#222"
+  # Fade duration (seconds) for plain background that shows before the end text
+  endingEndBackgroundFadeDuration: 0.5
+  # End text fade durations (in seconds; increased by 1s compared to the default fade)
+  endingEndTextFadeInDuration: 1.5
+  endingEndTextFadeOutDuration: 1.5
+
   endingEmote: assets/images/outro-emote.png
+
   copyrightText: © 2025 seyuppi
+  copyrightFontSize: 80
+  copyrightFontWeight: regular
+  copyrightColorHex: "#c8c8c8"
+  copyrightFadeInDuration: 1.0

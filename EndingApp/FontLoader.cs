@@ -238,9 +238,9 @@ internal sealed class FontLoader : IDisposable
         string sext = Path.GetExtension(symbolFontPath);
         Font? TryLoadSymbolVariant(string[] candidates)
         {
-            foreach (var cand in candidates)
+            foreach (string cand in candidates)
             {
-                var candidatePath = Path.Combine(sdir, sbaseName + cand + sext);
+                string candidatePath = Path.Combine(sdir, sbaseName + cand + sext);
                 string sBaseWithoutRegular = sbaseName;
                 if (sBaseWithoutRegular.EndsWith("-Regular", StringComparison.OrdinalIgnoreCase))
                     sBaseWithoutRegular = sBaseWithoutRegular.Substring(
@@ -254,7 +254,7 @@ internal sealed class FontLoader : IDisposable
                         0,
                         sBaseWithoutRegular.Length - "_Regular".Length
                     );
-                var candidatePath2 = Path.Combine(sdir, sBaseWithoutRegular + cand + sext);
+                string candidatePath2 = Path.Combine(sdir, sBaseWithoutRegular + cand + sext);
                 if (File.Exists(candidatePath))
                 {
                     try
