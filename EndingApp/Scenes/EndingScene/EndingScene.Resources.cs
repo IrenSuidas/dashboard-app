@@ -1,3 +1,4 @@
+using EndingApp.Services;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -37,29 +38,14 @@ internal sealed partial class EndingScene
             TextureFilter.Bilinear
         );
 
-        // Prepare music but do not play yet - init audio only if not already ready
-        if (!Raylib.IsAudioDeviceReady())
-        {
-            Raylib.InitAudioDevice();
-        }
+        // Prepare music but do not play yet - music managed by caller
         _music = ResourceCache.LoadMusic(_config.Ending.Music);
         // Reset playback position so the music always starts from the beginning when the scene starts.
         try
         {
-            if (Raylib.IsAudioDeviceReady())
+            if (AudioService.IsAudioDeviceReady)
             {
-                // Stop and seek to start explicitly, even if returned by cache
-                try
-                {
-                    Raylib.StopMusicStream(_music);
-                }
-                catch { }
-                try
-                {
-                    Raylib.SeekMusicStream(_music, 0f);
-                }
-                catch { }
-                Logger.Info($"MUSIC: Reset playback for {_config.Ending.Music}");
+                AudioService.ResetPlayback(_music);
             }
         }
         catch (Exception ex)
@@ -84,8 +70,8 @@ internal sealed partial class EndingScene
             return;
 
         // Log memory use to help track potential leaks
-        long memBefore = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
-        Logger.Info($"Cleanup: memory before cleanup {memBefore / 1024 / 1024} MB");
+        long memBefore = Diagnostics.GetPrivateMemoryMB();
+        Diagnostics.LogMemory("Cleanup: memory before cleanup", memBefore);
 
         if (IsActive)
         {
@@ -126,12 +112,12 @@ internal sealed partial class EndingScene
                 // Ensure any playing music is stopped before release
                 try
                 {
-                    if (Raylib.IsAudioDeviceReady())
-                        Raylib.StopMusicStream(_music);
+                    AudioService.Stop(_music);
                 }
                 catch { }
                 ResourceCache.ReleaseMusic(_config.Ending.Music);
                 _music = default;
+                AudioService.Unregister();
             }
             catch (Exception ex)
             {
@@ -162,11 +148,7 @@ internal sealed partial class EndingScene
         // Force a GC collection and wait to help ensure managed resources are reclaimed.
         GC.Collect();
         GC.WaitForPendingFinalizers();
-        long memAfter = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
-        Logger.Info(
-            "Cleanup: memory after cleanup and GC {0} MB (delta {1} MB)",
-            memAfter / 1024 / 1024,
-            (memAfter - memBefore) / 1024 / 1024
-        );
+        long memAfter = Diagnostics.GetPrivateMemoryMB();
+        Diagnostics.LogMemoryDelta("Cleanup: memory after cleanup and GC", memBefore, memAfter);
     }
 }

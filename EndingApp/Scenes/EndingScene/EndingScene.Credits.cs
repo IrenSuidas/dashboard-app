@@ -57,7 +57,7 @@ internal sealed partial class EndingScene
         float currentY = _creditsScrollY;
         // Position credits block using creditsPositionPercentage from config
         int creditsLeftX = (int)(
-            (_config.Ending.Width * _config.Ending.CreditsPositionPercentage) / 100.0
+            _config.Ending.Width * _config.Ending.CreditsPositionPercentage / 100.0
         );
 
         foreach (var entry in _credits)

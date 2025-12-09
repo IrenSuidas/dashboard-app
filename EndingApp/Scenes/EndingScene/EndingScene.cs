@@ -1,3 +1,4 @@
+using EndingApp.Services;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -5,8 +6,6 @@ namespace EndingApp;
 internal sealed partial class EndingScene(AppConfig config) : IDisposable
 {
     private AppConfig _config = config;
-
-    // moved resource fields to EndingScene.Resources.cs
     private bool _disposed;
     private bool _cleanedUp;
 
@@ -33,8 +32,6 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         Dispose(false);
     }
 
-    // moved internal state fields to EndingScene.State.cs
-
     public bool IsActive { get; private set; }
 
     public void Start()
@@ -53,35 +50,23 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             (monitorHeight - _config.Ending.Height) / 2
         );
 
+        // Ensure audio device is initialized before loading music/resources that may require audio
+        AudioService.Register();
         // Load resources (textures, fonts, music, emote)
         LoadResources();
 
         // Start credits at bottom of screen (outside view)
         _creditsScrollY = _config.Ending.Height;
 
-        // Prepare music but do not play yet - init audio only if not already ready
-        if (!Raylib.IsAudioDeviceReady())
-        {
-            Raylib.InitAudioDevice();
-        }
+        // Prepare music but do not play yet - ensure audio device is initialized
+        AudioService.Register();
         _music = ResourceCache.LoadMusic(_config.Ending.Music);
         // Reset playback position so the music always starts from the beginning when the scene starts.
         try
         {
-            if (Raylib.IsAudioDeviceReady())
+            if (AudioService.IsAudioDeviceReady)
             {
-                // Stop and seek to start explicitly, even if returned by cache
-                try
-                {
-                    Raylib.StopMusicStream(_music);
-                }
-                catch { }
-                try
-                {
-                    Raylib.SeekMusicStream(_music, 0f);
-                }
-                catch { }
-                Logger.Info($"MUSIC: Reset playback for {_config.Ending.Music}");
+                AudioService.ResetPlayback(_music);
             }
         }
         catch (Exception ex)
@@ -90,7 +75,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         }
 
         // Calculate dynamic credits scroll speed
-        float songDuration = Raylib.GetMusicTimeLength(_music);
+        float songDuration = AudioService.GetTimeLength(_music);
         _songDuration = songDuration;
         _musicStopped = false;
         float scrollTime = Math.Max(songDuration - 15f, 2f); // minimum 2 seconds to avoid div by zero
@@ -129,10 +114,6 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _copyrightAlpha = 0f;
     }
 
-    // Update implementation moved to EndingScene.Update.cs
-
-    // CalculateCreditsHeight implementation moved to EndingScene.Credits.cs
-
     public void Stop()
     {
         // Ensure resources are cleaned and the window is restored when stopping normally.
@@ -162,22 +143,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         int monitorHeight = Raylib.GetMonitorHeight(Raylib.GetCurrentMonitor());
         Raylib.SetWindowPosition((monitorWidth - 400) / 2, (monitorHeight - 200) / 2);
 
-        // Close audio device if it is ready
-        if (Raylib.IsAudioDeviceReady())
-        {
-            try
-            {
-                Raylib.CloseAudioDevice();
-            }
-            catch { }
-        }
+        // Close audio device if possible (decrement refcount and close if nobody else needs it)
+        AudioService.Unregister();
     }
-
-    // Draw implementation moved to EndingScene.Draw.cs
-
-    // DrawCredits implementation moved to EndingScene.Credits.cs
-
-    // Cleanup implementation moved to EndingScene.Resources.cs
-
-    // Regex helper moved to EndingScene.Regex.cs
 }

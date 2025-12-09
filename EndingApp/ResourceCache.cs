@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using EndingApp.Services;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -120,7 +121,7 @@ internal static class ResourceCache
                     // Stop the music if still playing then unload
                     try
                     {
-                        Raylib.StopMusicStream(val.music);
+                        AudioService.Stop(val.music);
                     }
                     catch (Exception e)
                     {

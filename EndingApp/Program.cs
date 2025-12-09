@@ -18,7 +18,6 @@ internal static class Program
         Raylib.SetWindowState(ConfigFlags.VSyncHint);
         Raylib.SetTargetFPS(60);
 
-        // Button properties - 3 buttons now
         Rectangle endingButton = new(20, 70, 110, 60);
         Rectangle clipButton = new(145, 70, 110, 60);
 
@@ -43,13 +42,8 @@ internal static class Program
                     // Dump resource cache to check counts of cached resources
                     ResourceCache.DumpState();
                     FontCache.DumpState();
-                    long memAfterCleanup = System
-                        .Diagnostics.Process.GetCurrentProcess()
-                        .PrivateMemorySize64;
-                    Logger.Info(
-                        "Program: memory after cleanup: {0} MB",
-                        memAfterCleanup / 1024 / 1024
-                    );
+                    long memAfterCleanup = Diagnostics.GetPrivateMemoryMB();
+                    Diagnostics.LogMemory("Program: memory after cleanup", memAfterCleanup);
                     endingScene = null;
                 }
             }
@@ -64,24 +58,20 @@ internal static class Program
                 {
                     if (endingHovered)
                     {
-                        long memBefore = System
-                            .Diagnostics.Process.GetCurrentProcess()
-                            .PrivateMemorySize64;
-                        Logger.Info(
-                            "Program: memory before starting EndingScene: {0} MB",
-                            memBefore / 1024 / 1024
+                        long memBefore = Diagnostics.GetPrivateMemoryMB();
+                        Diagnostics.LogMemory(
+                            "Program: memory before starting EndingScene",
+                            memBefore
                         );
                         endingScene = new EndingScene(config);
                         endingScene.Start();
                         ResourceCache.DumpState();
                         FontCache.DumpState();
-                        long memAfter = System
-                            .Diagnostics.Process.GetCurrentProcess()
-                            .PrivateMemorySize64;
-                        Logger.Info(
-                            "Program: memory after starting EndingScene: {0} MB (delta {1} MB)",
-                            memAfter / 1024 / 1024,
-                            (memAfter - memBefore) / 1024 / 1024
+                        long memAfter = Diagnostics.GetPrivateMemoryMB();
+                        Diagnostics.LogMemoryDelta(
+                            "Program: memory after starting EndingScene",
+                            memBefore,
+                            memAfter
                         );
                     }
                     else if (clipHovered)

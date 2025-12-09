@@ -1,3 +1,4 @@
+using EndingApp.Services;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -43,7 +44,7 @@ internal sealed partial class EndingScene
         // Start music and credits after delay (only if music hasn't been started or stopped already)
         if (!_musicStarted && !_musicStopped && !_startTextPlayed && _elapsedTime >= startDelay)
         {
-            Raylib.PlayMusicStream(_music);
+            AudioService.Play(_music);
             _musicStarted = true;
             _showStartText = true;
             _creditsStarted = true;
@@ -148,12 +149,12 @@ internal sealed partial class EndingScene
         }
 
         // Update music stream if started and not stopped
-        if (_musicStarted && !_musicStopped && Raylib.IsAudioDeviceReady())
+        if (_musicStarted && !_musicStopped && AudioService.IsAudioDeviceReady)
         {
-            Raylib.UpdateMusicStream(_music);
+            AudioService.Update(_music);
 
             _musicPlayElapsed += dt;
-            float played = Raylib.GetMusicTimePlayed(_music);
+            float played = AudioService.GetTimePlayed(_music);
 
             const float tolerance = 0.08f; // small tolerance in seconds
             bool endedByApi = played > 0 && played + tolerance >= _songDuration;
@@ -162,7 +163,7 @@ internal sealed partial class EndingScene
             {
                 try
                 {
-                    Raylib.StopMusicStream(_music);
+                    AudioService.Stop(_music);
                 }
                 catch { }
                 _musicStopped = true;
