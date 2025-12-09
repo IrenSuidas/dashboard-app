@@ -81,12 +81,12 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
                     Raylib.SeekMusicStream(_music, 0f);
                 }
                 catch { }
-                Console.WriteLine($"INFO: MUSIC: Reset playback for {_config.Ending.Music}");
+                Logger.Info($"MUSIC: Reset playback for {_config.Ending.Music}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"WARN: MUSIC: failed to reset playback: {ex.Message}");
+            Logger.Warn($"MUSIC: failed to reset playback: {ex.Message}");
         }
 
         // Calculate dynamic credits scroll speed

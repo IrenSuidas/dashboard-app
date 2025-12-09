@@ -22,14 +22,16 @@ internal static class ResourceCache
             k =>
             {
                 var t = Raylib.LoadTexture(path);
-                Console.WriteLine($"ResourceCache: Loaded texture {path} (id={t.Id})");
+                Logger.Info("ResourceCache: Loaded texture {0} (id={1})", path, t.Id);
                 return (t, 1);
             },
             (k, v) =>
             {
                 v.refCount++;
-                Console.WriteLine(
-                    $"ResourceCache: Increment texture refcount {path} => {v.refCount}"
+                Logger.Debug(
+                    "ResourceCache: Increment texture refcount {0} => {1}",
+                    path,
+                    v.refCount
                 );
                 return (v.texture, v.refCount);
             }
@@ -45,21 +47,25 @@ internal static class ResourceCache
         if (s_textures.TryGetValue(key, out var val))
         {
             val.refCount--;
-            Console.WriteLine($"ResourceCache: ReleaseTexture refcount {path} => {val.refCount}");
+            Logger.Debug("ResourceCache: ReleaseTexture refcount {0} => {1}", path, val.refCount);
             if (val.refCount <= 0)
             {
                 try
                 {
                     if (val.texture.Id != 0)
                         Raylib.UnloadTexture(val.texture);
-                    Console.WriteLine(
-                        $"ResourceCache: Unloaded texture {path} (id={val.texture.Id})"
+                    Logger.Info(
+                        "ResourceCache: Unloaded texture {0} (id={1})",
+                        path,
+                        val.texture.Id
                     );
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"ResourceCache: Error unloading texture {path}: {ex.Message}"
+                    Logger.Warn(
+                        "ResourceCache: Error unloading texture {0}: {1}",
+                        path,
+                        ex.Message
                     );
                 }
                 s_textures.TryRemove(key, out _);
@@ -81,14 +87,16 @@ internal static class ResourceCache
             k =>
             {
                 var m = Raylib.LoadMusicStream(path);
-                Console.WriteLine($"ResourceCache: Loaded music {path}");
+                Logger.Info("ResourceCache: Loaded music {0}", path);
                 return (m, 1);
             },
             (k, v) =>
             {
                 v.refCount++;
-                Console.WriteLine(
-                    $"ResourceCache: Increment music refcount {path} => {v.refCount}"
+                Logger.Debug(
+                    "ResourceCache: Increment music refcount {0} => {1}",
+                    path,
+                    v.refCount
                 );
                 return (v.music, v.refCount);
             }
@@ -104,7 +112,7 @@ internal static class ResourceCache
         if (_musics.TryGetValue(key, out var val))
         {
             val.refCount--;
-            Console.WriteLine($"ResourceCache: ReleaseMusic refcount {path} => {val.refCount}");
+            Logger.Debug("ResourceCache: ReleaseMusic refcount {0} => {1}", path, val.refCount);
             if (val.refCount <= 0)
             {
                 try
@@ -116,7 +124,7 @@ internal static class ResourceCache
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"ResourceCache: StopMusicStream error: {e.Message}");
+                        Logger.Warn("ResourceCache: StopMusicStream error: {0}", e.Message);
                     }
                     try
                     {
@@ -124,13 +132,13 @@ internal static class ResourceCache
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"ResourceCache: UnloadMusicStream error: {e.Message}");
+                        Logger.Warn("ResourceCache: UnloadMusicStream error: {0}", e.Message);
                     }
-                    Console.WriteLine($"ResourceCache: Unloaded music {path}");
+                    Logger.Info("ResourceCache: Unloaded music {0}", path);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"ResourceCache: Error unloading music {path}: {ex.Message}");
+                    Logger.Warn("ResourceCache: Error unloading music {0}: {1}", path, ex.Message);
                 }
                 _musics.TryRemove(key, out _);
             }
@@ -143,18 +151,19 @@ internal static class ResourceCache
 
     public static void DumpState()
     {
-        Console.WriteLine(
-            $"ResourceCache: textures = {s_textures.Count}, musics = {_musics.Count}"
-        );
+        Logger.Info("ResourceCache: textures = {0}, musics = {1}", s_textures.Count, _musics.Count);
         foreach (var kvp in s_textures)
         {
-            Console.WriteLine(
-                $"ResourceCache: texture {kvp.Key}, refcount = {kvp.Value.refCount}, id = {kvp.Value.texture.Id}"
+            Logger.Info(
+                "ResourceCache: texture {0}, refcount = {1}, id = {2}",
+                kvp.Key,
+                kvp.Value.refCount,
+                kvp.Value.texture.Id
             );
         }
         foreach (var kvp in _musics)
         {
-            Console.WriteLine($"ResourceCache: music {kvp.Key}, refcount = {kvp.Value.refCount}");
+            Logger.Info("ResourceCache: music {0}, refcount = {1}", kvp.Key, kvp.Value.refCount);
         }
     }
 }

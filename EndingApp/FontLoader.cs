@@ -79,21 +79,24 @@ internal sealed class FontLoader : IDisposable
             if (cp <= 255) // include Latin-1 range for primary font
                 primaryCpSet.Add(cp);
         }
-        int[] primaryCodepoints = primaryCpSet.OrderBy(x => x).ToArray();
+        int[] primaryCodepoints = [.. primaryCpSet.OrderBy(x => x)];
 
         // Load primary font with ASCII only
         if (File.Exists(primaryFontPath))
         {
             _primaryRegular = FontCache.LoadFont(primaryFontPath, fontSize, primaryCodepoints);
             Raylib.SetTextureFilter(_primaryRegular.Texture, textureFilter);
-            Console.WriteLine(
-                $"FontLoader: Primary regular font loaded from {primaryFontPath} ({asciiCodepoints.Length} glyphs)"
+            Logger.Info(
+                "FontLoader: Primary regular font loaded from {0} ({1} glyphs)",
+                primaryFontPath,
+                asciiCodepoints.Length
             );
         }
         else
         {
-            Console.WriteLine(
-                $"FontLoader: Primary font not found at {primaryFontPath}, using default"
+            Logger.Warn(
+                "FontLoader: Primary font not found at {0}, using default",
+                primaryFontPath
             );
             _primaryRegular = Raylib.GetFontDefault();
         }
@@ -134,15 +137,15 @@ internal sealed class FontLoader : IDisposable
                     {
                         var f = FontCache.LoadFont(candidatePath, fontSize, primaryCodepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
-                        Console.WriteLine(
-                            $"FontLoader: Primary variant loaded from {candidatePath}"
-                        );
+                        Logger.Info("FontLoader: Primary variant loaded from {0}", candidatePath);
                         return f;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(
-                            $"FontLoader: Failed to load font {candidatePath}: {ex.Message}"
+                        Logger.Warn(
+                            "FontLoader: Failed to load font {0}: {1}",
+                            candidatePath,
+                            ex.Message
                         );
                         // continue to try other candidates
                     }
@@ -160,15 +163,15 @@ internal sealed class FontLoader : IDisposable
                     {
                         var f = FontCache.LoadFont(candidatePath2, fontSize, primaryCodepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
-                        Console.WriteLine(
-                            $"FontLoader: Primary variant loaded from {candidatePath2}"
-                        );
+                        Logger.Info("FontLoader: Primary variant loaded from {0}", candidatePath2);
                         return f;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(
-                            $"FontLoader: Failed to load font {candidatePath2}: {ex.Message}"
+                        Logger.Warn(
+                            "FontLoader: Failed to load font {0}: {1}",
+                            candidatePath2,
+                            ex.Message
                         );
                     }
                 }
@@ -181,15 +184,15 @@ internal sealed class FontLoader : IDisposable
         {
             _symbolRegular = FontCache.LoadFont(symbolFontPath, fontSize, codepoints);
             Raylib.SetTextureFilter(_symbolRegular.Texture, textureFilter);
-            Console.WriteLine(
-                $"FontLoader: Symbol regular font loaded from {symbolFontPath} ({_symbolRegular.GlyphCount} glyphs)"
+            Logger.Info(
+                "FontLoader: Symbol regular font loaded from {0} ({1} glyphs)",
+                symbolFontPath,
+                _symbolRegular.GlyphCount
             );
         }
         else
         {
-            Console.WriteLine(
-                $"FontLoader: Symbol font not found at {symbolFontPath}, using default"
-            );
+            Logger.Warn("FontLoader: Symbol font not found at {0}, using default", symbolFontPath);
             _symbolRegular = Raylib.GetFontDefault();
         }
 
@@ -250,15 +253,15 @@ internal sealed class FontLoader : IDisposable
                     {
                         var f = FontCache.LoadFont(candidatePath, fontSize, codepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
-                        Console.WriteLine(
-                            $"FontLoader: Symbol variant loaded from {candidatePath}"
-                        );
+                        Logger.Info("FontLoader: Symbol variant loaded from {0}", candidatePath);
                         return f;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(
-                            $"FontLoader: Failed to load symbol font {candidatePath}: {ex.Message}"
+                        Logger.Warn(
+                            "FontLoader: Failed to load symbol font {0}: {1}",
+                            candidatePath,
+                            ex.Message
                         );
                     }
                 }
@@ -274,15 +277,15 @@ internal sealed class FontLoader : IDisposable
                     {
                         var f = FontCache.LoadFont(candidatePath2, fontSize, codepoints);
                         Raylib.SetTextureFilter(f.Texture, textureFilter);
-                        Console.WriteLine(
-                            $"FontLoader: Symbol variant loaded from {candidatePath2}"
-                        );
+                        Logger.Info("FontLoader: Symbol variant loaded from {0}", candidatePath2);
                         return f;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(
-                            $"FontLoader: Failed to load symbol font {candidatePath2}: {ex.Message}"
+                        Logger.Warn(
+                            "FontLoader: Failed to load symbol font {0}: {1}",
+                            candidatePath2,
+                            ex.Message
                         );
                     }
                 }
@@ -358,8 +361,10 @@ internal sealed class FontLoader : IDisposable
         if (nonAscii.Count > 0)
         {
             string chars = string.Join("", nonAscii.Select(cp => char.ConvertFromUtf32(cp)));
-            Console.WriteLine(
-                $"FontLoader: Extracted {nonAscii.Count} non-ASCII codepoints: {chars}"
+            Logger.Info(
+                "FontLoader: Extracted {0} non-ASCII codepoints: {1}",
+                nonAscii.Count,
+                chars
             );
         }
 
@@ -473,8 +478,11 @@ internal sealed class FontLoader : IDisposable
             var fontToUse = GetFontForCodepoint(rune.Value, weight);
             if (!_loggedFontTextureIds.Contains(fontToUse.Texture.Id))
             {
-                Console.WriteLine(
-                    $"FontLoader: Using font texture {fontToUse.Texture.Id} for codepoint {rune.Value} (weight {weight})"
+                Logger.Info(
+                    "FontLoader: Using font texture {0} for codepoint {1} (weight {2})",
+                    fontToUse.Texture.Id,
+                    rune.Value,
+                    weight
                 );
                 _loggedFontTextureIds.Add(fontToUse.Texture.Id);
             }
@@ -596,7 +604,7 @@ internal sealed class FontLoader : IDisposable
         {
             if (f.Texture.Id != 0 && f.Texture.Id != Raylib.GetFontDefault().Texture.Id)
             {
-                Console.WriteLine($"FontLoader: unloading font {name} (texture id {f.Texture.Id})");
+                Logger.Info("FontLoader: unloading font {0} (texture id {1})", name, f.Texture.Id);
                 // Prefer releasing via font cache by instance
                 try
                 {

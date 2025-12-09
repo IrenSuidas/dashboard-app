@@ -33,14 +33,17 @@ internal static class FontCache
             k =>
             {
                 var f = Raylib.LoadFontEx(path, size, codepoints, codepoints.Length);
-                Console.WriteLine($"FontCache: Loaded font {path} size={size} key={k}");
+                Logger.Info("FontCache: Loaded font {0} size={1} key={2}", path, size, k);
                 return (f, 1);
             },
             (k, v) =>
             {
                 v.refCount++;
-                Console.WriteLine(
-                    $"FontCache: Increment font refcount {path} size={size} => {v.refCount}"
+                Logger.Debug(
+                    "FontCache: Increment font refcount {0} size={1} => {2}",
+                    path,
+                    size,
+                    v.refCount
                 );
                 return (v.font, v.refCount);
             }
@@ -56,19 +59,22 @@ internal static class FontCache
         if (s_fonts.TryGetValue(key, out var val))
         {
             val.refCount--;
-            Console.WriteLine(
-                $"FontCache: ReleaseFont refcount {path} size={size} => {val.refCount}"
+            Logger.Debug(
+                "FontCache: ReleaseFont refcount {0} size={1} => {2}",
+                path,
+                size,
+                val.refCount
             );
             if (val.refCount <= 0)
             {
                 try
                 {
                     Raylib.UnloadFont(val.font);
-                    Console.WriteLine($"FontCache: Unloaded font {path} size={size}");
+                    Logger.Info("FontCache: Unloaded font {0} size={1}", path, size);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"FontCache: Error unloading font {path}: {ex.Message}");
+                    Logger.Warn("FontCache: Error unloading font {0}: {1}", path, ex.Message);
                 }
                 s_fonts.TryRemove(key, out _);
             }
@@ -95,20 +101,24 @@ internal static class FontCache
         if (matchKey != null && s_fonts.TryGetValue(matchKey, out var val))
         {
             val.refCount--;
-            Console.WriteLine(
-                $"FontCache: ReleaseFont by instance refcount {matchKey} => {val.refCount}"
+            Logger.Debug(
+                "FontCache: ReleaseFont by instance refcount {0} => {1}",
+                matchKey,
+                val.refCount
             );
             if (val.refCount <= 0)
             {
                 try
                 {
                     Raylib.UnloadFont(val.font);
-                    Console.WriteLine($"FontCache: Unloaded font key {matchKey}");
+                    Logger.Info("FontCache: Unloaded font key {0}", matchKey);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"FontCache: Error unloading font key {matchKey}: {ex.Message}"
+                    Logger.Warn(
+                        "FontCache: Error unloading font key {0}: {1}",
+                        matchKey,
+                        ex.Message
                     );
                 }
                 s_fonts.TryRemove(matchKey, out _);
@@ -122,10 +132,10 @@ internal static class FontCache
 
     public static void DumpState()
     {
-        Console.WriteLine($"FontCache: fonts = {s_fonts.Count}");
+        Logger.Info("FontCache: fonts = {0}", s_fonts.Count);
         foreach (var kvp in s_fonts)
         {
-            Console.WriteLine($"FontCache: font {kvp.Key}, refcount = {kvp.Value.refCount}");
+            Logger.Info("FontCache: font {0}, refcount = {1}", kvp.Key, kvp.Value.refCount);
         }
     }
 }

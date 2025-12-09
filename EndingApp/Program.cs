@@ -33,8 +33,8 @@ internal static class Program
                 // If the scene requested returning to main menu, perform cleanup here and clear the reference.
                 if (endingScene != null && !endingScene.IsActive)
                 {
-                    Console.WriteLine(
-                        "INFO: Program: EndingScene is no longer active; performing cleanup and releasing reference."
+                    Logger.Info(
+                        "Program: EndingScene is no longer active; performing cleanup and releasing reference."
                     );
                     // Restore the main window state and close audio device
                     EndingScene.RestoreWindowAndAudioState();
@@ -46,8 +46,9 @@ internal static class Program
                     long memAfterCleanup = System
                         .Diagnostics.Process.GetCurrentProcess()
                         .PrivateMemorySize64;
-                    Console.WriteLine(
-                        $"INFO: Program: memory after cleanup: {memAfterCleanup / 1024 / 1024} MB"
+                    Logger.Info(
+                        "Program: memory after cleanup: {0} MB",
+                        memAfterCleanup / 1024 / 1024
                     );
                     endingScene = null;
                 }
@@ -66,8 +67,9 @@ internal static class Program
                         long memBefore = System
                             .Diagnostics.Process.GetCurrentProcess()
                             .PrivateMemorySize64;
-                        Console.WriteLine(
-                            $"INFO: Program: memory before starting EndingScene: {memBefore / 1024 / 1024} MB"
+                        Logger.Info(
+                            "Program: memory before starting EndingScene: {0} MB",
+                            memBefore / 1024 / 1024
                         );
                         endingScene = new EndingScene(config);
                         endingScene.Start();
@@ -76,8 +78,10 @@ internal static class Program
                         long memAfter = System
                             .Diagnostics.Process.GetCurrentProcess()
                             .PrivateMemorySize64;
-                        Console.WriteLine(
-                            $"INFO: Program: memory after starting EndingScene: {memAfter / 1024 / 1024} MB (delta {(memAfter - memBefore) / 1024 / 1024} MB)"
+                        Logger.Info(
+                            "Program: memory after starting EndingScene: {0} MB (delta {1} MB)",
+                            memAfter / 1024 / 1024,
+                            (memAfter - memBefore) / 1024 / 1024
                         );
                     }
                     else if (clipHovered)

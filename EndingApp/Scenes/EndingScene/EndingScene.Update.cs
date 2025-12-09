@@ -1,4 +1,3 @@
-using EndingApp.Utils;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -18,8 +17,8 @@ internal sealed partial class EndingScene
             ) && Raylib.IsKeyPressed(KeyboardKey.Space)
         )
         {
-            Console.WriteLine(
-                "INFO: EndingScene: ctrl+space pressed - returning to main menu (deferred cleanup)"
+            Logger.Info(
+                "EndingScene: ctrl+space pressed - returning to main menu (deferred cleanup)"
             );
             IsActive = false;
             _creditsStarted = false;
@@ -50,20 +49,19 @@ internal sealed partial class EndingScene
             _creditsStarted = true;
             _startTextFader.StartFadeIn(0.5f);
             _startTextPlayed = true;
-            Console.WriteLine(
-                $"INFO: EndingScene: StartText fade-in triggered at elapsed {_elapsedTime:F2}"
-            );
+            Logger.Info("EndingScene: StartText fade-in triggered at elapsed {0:F2}", _elapsedTime);
         }
 
         // Update the start text fader each frame if needed
         if (_showStartText)
         {
             _startTextFader.Update(dt);
-#if DEBUG
-            Console.WriteLine(
-                $"DEBUG: EndingScene: StartTextFader state={_startTextFader.State} active={_startTextFader.Active} alpha={_startTextFader.Alpha:F3}"
+            Logger.Debug(
+                "EndingScene: StartTextFader state={0} active={1} alpha={2:F3}",
+                _startTextFader.State,
+                _startTextFader.Active,
+                _startTextFader.Alpha
             );
-#endif
         }
 
         // Hide the start text when fade out finishes
@@ -71,7 +69,7 @@ internal sealed partial class EndingScene
         {
             _showStartText = false;
             _startTextHasFadedOut = true;
-            Console.WriteLine("INFO: EndingScene: StartText hidden after fade-out");
+            Logger.Info("EndingScene: StartText hidden after fade-out");
         }
 
         // Fade out start text after hide time, only once
@@ -82,15 +80,18 @@ internal sealed partial class EndingScene
             && _elapsedTime >= startDelay + startTextHideTime
         )
         {
-#if DEBUG
-            Console.WriteLine(
-                $"DEBUG: EndingScene: Fade-out condition met: state={_startTextFader.State} active={_startTextFader.Active} alpha={_startTextFader.Alpha:F3} elapsed={_elapsedTime:F3}"
+            Logger.Debug(
+                "EndingScene: Fade-out condition met: state={0} active={1} alpha={2:F3} elapsed={3:F3}",
+                _startTextFader.State,
+                _startTextFader.Active,
+                _startTextFader.Alpha,
+                _elapsedTime
             );
-#endif
             _startTextFader.StartFadeOut(0.5f);
             _startTextHasFadedOut = true;
-            Console.WriteLine(
-                $"INFO: EndingScene: StartText fade-out triggered at elapsed {_elapsedTime:F2}"
+            Logger.Info(
+                "EndingScene: StartText fade-out triggered at elapsed {0:F2}",
+                _elapsedTime
             );
         }
         // (duplicate hide logic removed)
@@ -166,8 +167,8 @@ internal sealed partial class EndingScene
                 catch { }
                 _musicStopped = true;
                 _musicStarted = false;
-                Console.WriteLine(
-                    "INFO: MUSIC: Stopped playback after {0:F2}s (duration {1:F2}s, api={2:F2}s)",
+                Logger.Info(
+                    "MUSIC: Stopped playback after {0:F2}s (duration {1:F2}s, api={2:F2}s)",
                     _musicPlayElapsed,
                     _songDuration,
                     played
@@ -190,8 +191,9 @@ internal sealed partial class EndingScene
                         Math.Max(0.001f, _config.Ending.EndTextFadeOutDuration)
                     );
                     _endTextHasFadedOut = true;
-                    Console.WriteLine(
-                        $"INFO: EndingScene: EndText fade-out triggered at elapsed {_elapsedTime:F2}"
+                    Logger.Info(
+                        "EndingScene: EndText fade-out triggered at elapsed {0:F2}",
+                        _elapsedTime
                     );
                 }
             }

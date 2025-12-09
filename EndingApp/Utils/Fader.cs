@@ -38,9 +38,7 @@ internal struct Fader
         Active = true;
         State = FadeState.FadingIn;
         Alpha = 0f;
-#if DEBUG
-        Console.WriteLine($"DEBUG: Fader.StartFadeIn(duration={_duration})");
-#endif
+        Logger.Debug("Fader.StartFadeIn(duration={0})", _duration);
     }
 
     public void StartFadeOut(float duration)
@@ -50,9 +48,7 @@ internal struct Fader
         Active = true;
         State = FadeState.FadingOut;
         Alpha = 1f;
-#if DEBUG
-        Console.WriteLine($"DEBUG: Fader.StartFadeOut(duration={_duration})");
-#endif
+        Logger.Debug("Fader.StartFadeOut(duration={0})", _duration);
     }
 
     public void SetAlpha(float alpha)

@@ -59,12 +59,12 @@ internal sealed partial class EndingScene
                     Raylib.SeekMusicStream(_music, 0f);
                 }
                 catch { }
-                Console.WriteLine($"INFO: MUSIC: Reset playback for {_config.Ending.Music}");
+                Logger.Info($"MUSIC: Reset playback for {_config.Ending.Music}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"WARN: MUSIC: failed to reset playback: {ex.Message}");
+            Logger.Warn($"MUSIC: failed to reset playback: {ex.Message}");
         }
 
         // Load emote if provided
@@ -85,7 +85,7 @@ internal sealed partial class EndingScene
 
         // Log memory use to help track potential leaks
         long memBefore = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
-        Console.WriteLine($"INFO: Cleanup: memory before cleanup {memBefore / 1024 / 1024} MB");
+        Logger.Info($"Cleanup: memory before cleanup {memBefore / 1024 / 1024} MB");
 
         if (IsActive)
         {
@@ -101,9 +101,7 @@ internal sealed partial class EndingScene
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    $"WARN: Cleanup: failed to unload background texture: {ex.Message}"
-                );
+                Logger.Warn($"Cleanup: failed to unload background texture: {ex.Message}");
             }
 
             _fontLoader?.Dispose();
@@ -118,9 +116,7 @@ internal sealed partial class EndingScene
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"WARN: Cleanup: failed to unload emote texture: {ex.Message}"
-                    );
+                    Logger.Warn($"Cleanup: failed to unload emote texture: {ex.Message}");
                 }
                 _emoteLoaded = false;
             }
@@ -139,7 +135,7 @@ internal sealed partial class EndingScene
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WARN: Cleanup: failed to unload music stream: {ex.Message}");
+                Logger.Warn($"Cleanup: failed to unload music stream: {ex.Message}");
             }
 
             // Do NOT close audio device here: leaving it open prevents races while UI returns to main menu
@@ -167,8 +163,10 @@ internal sealed partial class EndingScene
         GC.Collect();
         GC.WaitForPendingFinalizers();
         long memAfter = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
-        Console.WriteLine(
-            $"INFO: Cleanup: memory after cleanup and GC {memAfter / 1024 / 1024} MB (delta {((memAfter - memBefore) / 1024 / 1024)} MB)"
+        Logger.Info(
+            "Cleanup: memory after cleanup and GC {0} MB (delta {1} MB)",
+            memAfter / 1024 / 1024,
+            (memAfter - memBefore) / 1024 / 1024
         );
     }
 }
