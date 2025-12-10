@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="FFMediaToolkit" Version="4.8.1" />
     <PackageVersion Include="Raylib-cs" Version="7.0.2" />
   </ItemGroup>
 </Project>
