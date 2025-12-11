@@ -44,6 +44,12 @@ internal sealed partial class EndingScene
             DrawCredits();
         }
 
+        // Draw Carousel
+        if (_carouselState != CarouselState.Hidden)
+        {
+            DrawCarousel();
+        }
+
         // Draw start text in the middle if needed
         if (_showStartText && !string.IsNullOrEmpty(_config.Ending.StartText))
         {
@@ -181,6 +187,97 @@ internal sealed partial class EndingScene
                 _config.Ending.BlackBarHeight,
                 Color.Black
             );
+        }
+    }
+
+    private void DrawCarousel()
+    {
+        float alpha = _carouselFader.Alpha;
+        if (alpha <= 0f)
+            return;
+
+        int centerX = (int)(
+            _config.Ending.Width * (_config.Ending.CarouselPositionPercentage / 100f)
+        );
+        int centerY = _config.Ending.Height / 2;
+        var tint = Color.White;
+        tint.A = (byte)(255 * alpha);
+
+        Texture2D textureToDraw = default;
+        int texWidth = 0;
+        int texHeight = 0;
+
+        if (_carouselCurrentItemType == CarouselItemType.Video && _carouselVideoPlayer != null)
+        {
+            textureToDraw = _carouselVideoPlayer.Texture;
+            texWidth = _carouselVideoPlayer.Width;
+            texHeight = _carouselVideoPlayer.Height;
+        }
+        else if (_carouselCurrentItemType == CarouselItemType.Image && _carouselImageLoaded)
+        {
+            textureToDraw = _carouselImageTexture;
+            texWidth = textureToDraw.Width;
+            texHeight = textureToDraw.Height;
+        }
+
+        if (texWidth > 0 && texHeight > 0)
+        {
+            // Calculate size based on percentage of window height (16:9 aspect ratio)
+            int drawHeight = (int)(
+                _config.Ending.Height * (_config.Ending.CarouselSizePercentage / 100f)
+            );
+            int drawWidth = (int)(drawHeight * (16f / 9f));
+
+            Rectangle destRect = new Rectangle(
+                centerX - drawWidth / 2,
+                centerY - drawHeight / 2,
+                drawWidth,
+                drawHeight
+            );
+
+            // Draw texture
+            if (_carouselCurrentItemType == CarouselItemType.Video && _carouselVideoPlayer != null)
+            {
+                _carouselVideoPlayer.Draw(destRect, tint);
+            }
+            else
+            {
+                Raylib.DrawTexturePro(
+                    textureToDraw,
+                    new Rectangle(0, 0, texWidth, texHeight),
+                    destRect,
+                    Vector2.Zero,
+                    0f,
+                    tint
+                );
+            }
+
+            // Draw filename
+            if (!string.IsNullOrEmpty(_carouselCurrentFileName) && _fontLoader != null)
+            {
+                int fontSize = 24;
+                var textColor = _config.Ending.ValuesColor;
+                textColor.A = tint.A;
+
+                var textSize = _fontLoader.MeasureText(
+                    _carouselCurrentFileName,
+                    fontSize,
+                    2,
+                    FontWeight.Bold
+                );
+                // Position top-left outside the media
+                int textX = (int)destRect.X;
+                int textY = (int)(destRect.Y - textSize.Y - 10);
+
+                _fontLoader.DrawText(
+                    _carouselCurrentFileName,
+                    new Vector2(textX, textY),
+                    fontSize,
+                    2,
+                    textColor,
+                    FontWeight.Bold
+                );
+            }
         }
     }
 }

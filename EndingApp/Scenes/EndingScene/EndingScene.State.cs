@@ -1,3 +1,5 @@
+using Raylib_cs;
+
 namespace EndingApp;
 
 internal sealed partial class EndingScene
@@ -9,6 +11,11 @@ internal sealed partial class EndingScene
     private float _songDuration;
     private float _musicPlayElapsed; // Manual timer for music playback
     private float _creditsHeight;
+
+    // Music volume control
+    private float _musicVolume = 1.0f;
+    private float _targetMusicVolume = 1.0f;
+    private const float MusicFadeSpeed = 0.5f; // Volume units per second
 
     // State for intro sequence
     private float _elapsedTime;
@@ -37,4 +44,30 @@ internal sealed partial class EndingScene
     private bool _copyrightFadingIn;
     private float _copyrightFadeElapsed;
     private float _copyrightAlpha;
+
+    // Carousel state
+    private List<string> _carouselItems = [];
+    private int _carouselIndex = -1;
+    private CarouselState _carouselState = CarouselState.Hidden;
+    private Utils.Fader _carouselFader;
+    private float _carouselTimer;
+    private Utils.VideoPlayer? _carouselVideoPlayer;
+    private Texture2D _carouselImageTexture;
+    private bool _carouselImageLoaded;
+    private CarouselItemType _carouselCurrentItemType;
+    private string _carouselCurrentFileName = "";
+
+    private enum CarouselState
+    {
+        Hidden,
+        FadingIn,
+        Playing,
+        FadingOut,
+    }
+
+    private enum CarouselItemType
+    {
+        Image,
+        Video,
+    }
 }

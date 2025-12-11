@@ -89,6 +89,8 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _musicStarted = false;
         _musicStopped = false;
         _musicPlayElapsed = 0f;
+        _musicVolume = 1.0f;
+        _targetMusicVolume = 1.0f;
         _creditsStarted = false;
         _endTextStarted = false;
         _showEndText = false;
@@ -98,20 +100,95 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _endBackgroundFader.Reset();
         _endBackgroundPlayed = false;
         _showStartText = false;
-        _startTextFader.Reset();
-        _startTextPlayed = false;
-        _startTextHasFadedOut = false;
 
         IsActive = true;
 
-        // Emote loaded during LoadResources()
-        // Reset cleanup flag (we have re-initialized a new scene)
-        _cleanedUp = false;
-        // Reset copyright state
-        _copyrightStarted = false;
-        _copyrightFadingIn = false;
-        _copyrightFadeElapsed = 0f;
-        _copyrightAlpha = 0f;
+        // Reset carousel state
+        _carouselState = CarouselState.Hidden;
+        _carouselIndex = -1;
+        _carouselFader.Reset();
+        _carouselTimer = 0f;
+        _carouselVideoPlayer?.Dispose();
+        _carouselVideoPlayer = new Utils.VideoPlayer();
+        if (_carouselImageLoaded)
+        {
+            Raylib.UnloadTexture(_carouselImageTexture);
+            _carouselImageLoaded = false;
+        }
+
+        // Load carousel items
+        LoadCarouselItems();
+    }
+
+    private void LoadCarouselItems()
+    {
+        _carouselItems.Clear();
+        string carouselPath = Path.Combine(AppContext.BaseDirectory, "assets", "carousel");
+        if (Directory.Exists(carouselPath))
+        {
+            var files = Directory
+                .GetFiles(carouselPath, "*.*")
+                .Where(f =>
+                {
+                    string ext = Path.GetExtension(f).ToLowerInvariant();
+                    return ext == ".png"
+                        || ext == ".jpg"
+                        || ext == ".jpeg"
+                        || ext == ".mp4"
+                        || ext == ".avi"
+                        || ext == ".mov"
+                        || ext == ".webm";
+                })
+                .ToList();
+
+            // Randomize
+            var rng = new Random();
+            _carouselItems = files.OrderBy(x => rng.Next()).ToList();
+            Logger.Info($"EndingScene: Loaded {_carouselItems.Count} carousel items.");
+        }
+        else
+        {
+            Logger.Warn($"EndingScene: Carousel directory not found at {carouselPath}");
+        }
+    }
+
+    private void LoadNextCarouselItem()
+    {
+        if (_carouselItems.Count == 0)
+            return;
+
+        _carouselIndex = (_carouselIndex + 1) % _carouselItems.Count;
+        string path = _carouselItems[_carouselIndex];
+        string ext = Path.GetExtension(path).ToLowerInvariant();
+        _carouselCurrentFileName = Path.GetFileNameWithoutExtension(path);
+
+        if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".webm")
+        {
+            _carouselCurrentItemType = CarouselItemType.Video;
+            _carouselVideoPlayer?.Load(path);
+            _carouselVideoPlayer?.Play();
+            // Video player handles looping internally if set, but we want to play once then next.
+            if (_carouselVideoPlayer != null)
+                _carouselVideoPlayer.IsLooping = false;
+
+            // Duck background music volume when video starts
+            _targetMusicVolume = 0.5f;
+        }
+        else
+        {
+            _carouselCurrentItemType = CarouselItemType.Image;
+            if (_carouselImageLoaded)
+            {
+                Raylib.UnloadTexture(_carouselImageTexture);
+            }
+            _carouselImageTexture = Raylib.LoadTexture(path);
+            Raylib.SetTextureFilter(_carouselImageTexture, TextureFilter.Bilinear);
+            _carouselImageLoaded = true;
+            _carouselTimer = 0f;
+
+            // Restore background music volume for images
+            _targetMusicVolume = 1.0f;
+        }
     }
 
     public void Stop()

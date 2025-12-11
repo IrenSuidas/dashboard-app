@@ -95,7 +95,6 @@ internal sealed partial class EndingScene
                 _elapsedTime
             );
         }
-        // (duplicate hide logic removed)
 
         // Only scroll credits after delay
         if (_creditsStarted)
@@ -153,6 +152,18 @@ internal sealed partial class EndingScene
         {
             AudioService.Update(_music);
 
+            // Update volume
+            if (Math.Abs(_musicVolume - _targetMusicVolume) > 0.001f)
+            {
+                float change = MusicFadeSpeed * dt;
+                if (_musicVolume < _targetMusicVolume)
+                    _musicVolume = Math.Min(_musicVolume + change, _targetMusicVolume);
+                else
+                    _musicVolume = Math.Max(_musicVolume - change, _targetMusicVolume);
+
+                AudioService.SetVolume(_music, _musicVolume);
+            }
+
             _musicPlayElapsed += dt;
             float played = AudioService.GetTimePlayed(_music);
 
@@ -178,6 +189,122 @@ internal sealed partial class EndingScene
         }
 
         // Update end text fading/visibility timers
+        if (_showEndText)
+        {
+            _endTextFader.Update(dt);
+
+            // If we have fully faded in, start counting the display time
+            if (!_endTextFader.Active && _endTextFader.Alpha >= 1f)
+            {
+                _endTextShowElapsed += dt;
+                if (!_endTextHasFadedOut && _endTextShowElapsed >= _config.Ending.EndTextHideTime)
+                {
+                    _endTextFader.StartFadeOut(
+                        Math.Max(0.001f, _config.Ending.EndTextFadeOutDuration)
+                    );
+                    _endTextHasFadedOut = true;
+                    Logger.Info(
+                        "EndingScene: EndText fade-out triggered at elapsed {0:F2}",
+                        _elapsedTime
+                    );
+                }
+            }
+
+            // When fade out completes, hide end text and start copyright
+            if (!_endTextFader.Active && _endTextFader.Alpha <= 0f && !_endTextHasFadedOut)
+            {
+                _showEndText = false;
+            }
+            else if (!_endTextFader.Active && _endTextFader.Alpha <= 0f && _endTextHasFadedOut)
+            {
+                _showEndText = false;
+                if (!string.IsNullOrEmpty(_config.Ending.CopyrightText) && !_copyrightStarted)
+                {
+                    _copyrightStarted = true;
+                    _copyrightFadingIn = true;
+                    _copyrightFadeElapsed = 0f;
+                    _copyrightAlpha = 0f;
+                }
+            }
+        }
+
+        // Update copyright fade-in if active
+        if (_copyrightFadingIn)
+        {
+            _copyrightFadeElapsed += dt;
+            float dur = Math.Max(0.001f, _config.Ending.CopyrightFadeInDuration);
+            _copyrightAlpha = Math.Clamp(_copyrightFadeElapsed / dur, 0f, 1f);
+            if (_copyrightAlpha >= 1f)
+            {
+                _copyrightAlpha = 1f;
+                _copyrightFadingIn = false;
+            }
+        }
+
+        // Update Carousel
+        if (_startTextHasFadedOut && _carouselItems.Count > 0)
+        {
+            switch (_carouselState)
+            {
+                case CarouselState.Hidden:
+                    LoadNextCarouselItem();
+                    _carouselFader.StartFadeIn(1.0f); // Fade in duration
+                    _carouselState = CarouselState.FadingIn;
+                    break;
+
+                case CarouselState.FadingIn:
+                    _carouselFader.Update(dt);
+                    if (_carouselCurrentItemType == CarouselItemType.Video)
+                    {
+                        _carouselVideoPlayer?.Update();
+                    }
+                    if (!_carouselFader.Active && _carouselFader.Alpha >= 1.0f)
+                    {
+                        _carouselState = CarouselState.Playing;
+                    }
+                    break;
+
+                case CarouselState.Playing:
+                    if (_carouselCurrentItemType == CarouselItemType.Video)
+                    {
+                        _carouselVideoPlayer?.Update();
+                        if (_carouselVideoPlayer?.State == Utils.VideoPlayerState.Ended)
+                        {
+                            _carouselFader.StartFadeOut(1.0f);
+                            _carouselState = CarouselState.FadingOut;
+                            _targetMusicVolume = 1.0f;
+                        }
+                    }
+                    else // Image
+                    {
+                        _carouselTimer += dt;
+                        if (_carouselTimer >= 5.0f)
+                        {
+                            _carouselFader.StartFadeOut(1.0f);
+                            _carouselState = CarouselState.FadingOut;
+                        }
+                    }
+                    break;
+
+                case CarouselState.FadingOut:
+                    _carouselFader.Update(dt);
+                    if (_carouselCurrentItemType == CarouselItemType.Video)
+                    {
+                        _carouselVideoPlayer?.Update();
+                    }
+                    if (!_carouselFader.Active && _carouselFader.Alpha <= 0.0f)
+                    {
+                        _carouselState = CarouselState.Hidden;
+                        if (_carouselCurrentItemType == CarouselItemType.Video)
+                        {
+                            _carouselVideoPlayer?.Stop();
+                        }
+                    }
+                    break;
+            }
+        }
+
+        // Update end text fader
         if (_showEndText)
         {
             _endTextFader.Update(dt);

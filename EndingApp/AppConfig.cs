@@ -31,6 +31,11 @@ internal sealed class AppConfig
             "ending.creditsPositionPercentage",
             60
         );
+        config.Ending.CarouselPositionPercentage = data.GetInt(
+            "ending.carouselPositionPercentage",
+            50
+        );
+        config.Ending.CarouselSizePercentage = data.GetInt("ending.carouselSizePercentage", 20);
         config.Ending.StartDelay = data.GetFloat("ending.endingStartDelay", 2.0f);
         config.Ending.StartText = data.GetString("ending.endingStartText", "Stream Ending");
         config.Ending.StartTextHideTime = data.GetFloat("ending.endingStartTextHideTime", 3.0f);
@@ -143,6 +148,8 @@ internal sealed class EndingConfig
     public int FontSize { get; set; } = 32;
     public int SectionFontSize { get; set; } = 40;
     public int CreditsPositionPercentage { get; set; } = 60;
+    public int CarouselPositionPercentage { get; set; } = 50;
+    public int CarouselSizePercentage { get; set; } = 20;
     public float StartDelay { get; set; } = 2.0f;
     public string StartText { get; set; } = "Stream Ending";
     public float StartTextHideTime { get; set; } = 3.0f;

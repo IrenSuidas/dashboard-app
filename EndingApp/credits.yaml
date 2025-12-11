@@ -1,7 +1,3 @@
-# Credits Configuration
-# This file defines the credits that will be displayed in the ending scene
-# Each entry can be a section with values, or a separator line
-
 credits:
   - section: [ゆっぴの物語]
     values:
@@ -15,9 +11,11 @@ credits:
   - section: ♢ Producer
     values:
       - seyuppi
+      - IrenSuidas
   - section: ♢ Production Designer
     values:
       - seyuppi
+      - IrenSuidas
   - section: ♢ Editor
     values:
       - seyuppi
@@ -38,10 +36,9 @@ credits:
     values:
       - GoodSpeedXan (Xan)
       - ItsJooze (Jooze)
-      - Salemba_ (Salemba)
       - IrenSuidas (Iren)
+      - Salemba_ (Salemba)
   - section: ♢ Dukes and Duchesses (VIPs)
-    twoColumns: true
     values:
       - DaZotto
       - YukienniTokki
@@ -55,7 +52,21 @@ credits:
       - Mottis
       - KoizumiShimu
       - ThubanVT
+      - SoulfulSalad
+      - SlimeyDegen
       - FleetingCandle
+      - hinahiro0727
+      - GlockRoomba_
+      - Corn_Ferret
+      - Elixer88
+      - LawdCookies
+      - 33mamaster
+      - kaimangambler
+      - Sonny_D_Light
+      - aki_TONE
+      - ThatDonkus
+      - Listener
+      - MaxPocus
   - section: ♢ All-time Top 3 Gifters
     values:
       - IrenSuidas
@@ -82,7 +93,7 @@ credits:
       - Undertale
       - Chess
       - Little Nightmares
-      - Hollow Knight (speedrun PB 1h 18m 07s)
+      - Hollow Knight
       - skribbl.io
       - osu!
       - Genshin Impact
@@ -121,6 +132,7 @@ credits:
       - スイカのゲーム (Watermelon Game)
       - Ori and the Will of the Wisp
       - Katamari Damacy REROLL
+      - Lethal Company
       - Dave the Diver
       - Superliminal
       - Muse Dash
@@ -131,12 +143,17 @@ credits:
       - Infinite Craft
       - Palworld
       - Study/Work With Me
+      - The Legend of Zelda: TOTK
+      - Risk of Rain 2
       - Balatro
       - Holo X Break
+      - Baba Is You
       - Dorfromantik
       - Buckshot Roulette
       - Content Warning
       - The Coin Game
+      - VRChat
+      - Mario Kart 8 Deluxe
       - Cult of the Lamb
       - Duck Detective: The Secret Salami
       - GRIS
@@ -144,10 +161,23 @@ credits:
       - Marvel Rivals
       - Pokemon Violet
       - MiSide
+      - TETR.IO
       - Little Nightmares II
+      - Infinity Nikki
       - Forgotton Anne
       - Project Zomboid
       - TCG Card Shop Simulator
+      - Nine Sols
+      - Bō: Path of the Teal Lotus
+      - Umamusume: Pretty Derby
+      - PEAK
+      - Donkey Kong Country
+      - Outer Wilds
+      - Clair Obscur: Expedition 33
+      - Pokémon Infinite Fusion
+      - NieR: Automata
+      - Hollow Knight: Silksong
+      - Pokémon Legends: Z-A
   - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
   - section: ♢ Chapter 1
     values:
@@ -354,10 +384,105 @@ credits:
       - Sp4ceCloud
       - SkellyBean18
       - Salemba_
+  - section: ♢ Chapter 5
+    values:
+      - [Unnamed] Kingdom New Hour Yuppathon 2025
+  - section: ♢ New Hour Yuppathon 2025 Participants Shoutouts
+    twoColumns: true
+    values:
+      - GodSpeedXan
+      - IrenSuidas
+      - serprite
+      - hinahiro0727
+      - MaxPocus
+      - Sonny_D_Light
+      - 33mamaster
+      - Listener
+      - itsJooze
+      - FleetingCandle
+      - kaimangambler
+      - SlimeyDegen
+      - ryanruger
+      - ThubanVT
+      - KoizumiShimu
+      - FairJame
+      - ThatDonkus
+      - SkellyBean18
+      - YummyPotat0
+      - Yukienni
+      - Elixer88
+      - Friendbndew
+      - LemonDingo
+  - section: ♢ New Hour Yuppathon 2025 Raiders
+    twoColumns: true
+    values:
+      - RaydishXu
+      - FairJame
+      - universalderek
+      - Mottis
+      - KoizumiShimu
+      - AbyssNullVoid
+      - DoanDOS
+      - Sustainna
+      - Apaulos98
+      - AnniemeAddict
+      - HewwoKookiez
+      - dustyrobovac
+      - LawdCookies
+      - itsJooze
+      - SkellyBean18
+      - Sonny_D_Light
+  - section: ♢ Chapter 6
+    values:
+      - [Unnamed] 1K Followers Celebration
+  - section: ♢ 1K Followers Celebration Participants Shoutouts
+    twoColumns: true
+    values:
+      - ryanruger
+      - hinahiro0727
+      - IrenSuidas
+      - GlockRoomba_
+      - GodSpeedXan
+      - 33mamaster
+      - just_a_b0t
+      - FleetingCandle
+      - serprite
+      - stellarkuma
+      - MaxPocus
+      - Penguinkiller33
+      - retrofuture77
+      - Abyssal_0_
+      - Friendbndew
+      - Listener
+      - KoizumiShimu
+      - SwordSaintMichael
+      - Yukienni
+      - ItsJooze
+      - paxetothecheeto
+      - aki_TONE
+      - FairJame
+      - YummyPotat0
+      - Thistle
+      - ritπ
+      - Linokii
+      - kaimangambler
+      - HewwoKookiez
+  - section: ♢ 1K Followers Celebration Raiders
+    twoColumns: true
+    values:
+      - Linokii
+      - Mottis
+      - aki_TONE
+      - PercyPascalVT
+      - Sp4ceCloud
+      - nehaow
+      - ExtraGuak
+      - ChefHollow
+      - DoanDOS
   - separator: ★ ━ ━ ━ ━ ━ ━ ━ ━ ━ ━ ★
   - section: ♢ Music
     values:
-      - "Mario Kart Wii - Toad's Factory [Remix]"
+      - Mario Kart Wii - Daisy Circuit [Remix]
       - by Qumu
   - section: ♢ Special Thanks
     values:
@@ -366,6 +491,7 @@ credits:
       - Bjonki
       - Senorsalad_
       - ItsBlackFang
+      - IrenSuidas
       - My War Generals
       - All My Wonderful Friends
       - My Subs
@@ -375,3 +501,5 @@ credits:
       - All Birthmonth Celebration 2023 Participants
       - All Unnamed SMP Launch Day Viewers
       - All Starry Starry Party 2024 Participants
+      - All New Hour Yuppathon 2025 Participants
+      - All 1K Followers Celebration Participants

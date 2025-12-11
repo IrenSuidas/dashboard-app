@@ -142,6 +142,20 @@ internal static class AudioService
         }
     }
 
+    public static void SetVolume(Music music, float volume)
+    {
+        if (!IsAudioDeviceReady || music.IsNull())
+            return;
+        try
+        {
+            Raylib.SetMusicVolume(music, volume);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: SetVolume failed: {0}", ex.Message);
+        }
+    }
+
     public static float GetTimePlayed(Music music)
     {
         if (!IsAudioDeviceReady || music.IsNull())

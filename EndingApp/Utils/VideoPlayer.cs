@@ -14,6 +14,7 @@ public enum VideoPlayerState
     Playing,
     Paused,
     Ended,
+    Buffering,
 }
 
 public sealed class VideoPlayer : IDisposable
@@ -57,6 +58,16 @@ public sealed class VideoPlayer : IDisposable
     private const int RingBufferSize = 4096 * 16; // Enough for ~1.5s of audio
     private const int AudioChunkSize = 4096; // Size to push to Raylib
 
+    // Video Frame Buffer
+    private const int VideoBufferSize = 15;
+    private readonly Queue<byte[]> _videoFrameQueue = new();
+    private readonly Stack<byte[]> _videoFramePool = new();
+
+    private bool _justLoaded;
+    private static bool s_ffmpegInitialized;
+    private Task? _bufferingTask;
+    private CancellationTokenSource? _bufferingCts;
+
     public void Load(string filePath)
     {
         Dispose();
@@ -64,7 +75,11 @@ public sealed class VideoPlayer : IDisposable
 
         try
         {
-            FFmpegLoader.FFmpegPath = GetFFmpegPath();
+            if (!s_ffmpegInitialized)
+            {
+                FFmpegLoader.FFmpegPath = GetFFmpegPath();
+                s_ffmpegInitialized = true;
+            }
 
             // 1. Open Video
             var videoOptions = new MediaOptions
@@ -88,6 +103,10 @@ public sealed class VideoPlayer : IDisposable
             _frameBuffer = new byte[testFrame.Data.Length];
             _textureBuffer = new byte[Width * Height * 4];
 
+            // Clear pools
+            _videoFrameQueue.Clear();
+            _videoFramePool.Clear();
+
             // 3. Setup Texture
             var image = Raylib.GenImageColor(Width, Height, Color.Black);
             Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8A8);
@@ -103,6 +122,7 @@ public sealed class VideoPlayer : IDisposable
             SetupAudio();
 
             State = VideoPlayerState.Stopped;
+            _justLoaded = true;
         }
         catch (Exception ex)
         {
@@ -116,11 +136,8 @@ public sealed class VideoPlayer : IDisposable
         try
         {
             // Close existing if any
-            if (_audioFile != null)
-            {
-                _audioFile.Dispose();
-                _audioFile = null;
-            }
+            _audioFile?.Dispose();
+            _audioFile = null;
 
             var audioOptions = new MediaOptions { StreamsToLoad = MediaMode.Audio };
             _audioFile = MediaFile.Open(_filePath, audioOptions);
@@ -165,42 +182,170 @@ public sealed class VideoPlayer : IDisposable
 
     public void Play()
     {
-        if (State == VideoPlayerState.Playing)
+        if (State == VideoPlayerState.Playing || State == VideoPlayerState.Buffering)
             return;
 
         if (State == VideoPlayerState.Stopped || State == VideoPlayerState.Ended)
         {
             _masterClock = 0;
             _nextFrameTime = 0;
+            State = VideoPlayerState.Buffering;
 
-            // Reset Video
-            if (_videoFile != null && _frameBuffer != null)
-            {
-                using var frame = _videoFile.Video.GetFrame(TimeSpan.Zero);
-                frame.Data.CopyTo(_frameBuffer);
-                UpdateTexture();
-            }
+            _bufferingCts?.Cancel();
+            _bufferingCts = new CancellationTokenSource();
+            var token = _bufferingCts.Token;
 
-            // Reset Audio
-            if (_hasAudio)
-            {
-                SetupAudio();
-                // Clear ring buffer
-                _ringBufferReadPos = 0;
-                _ringBufferWritePos = 0;
-                _ringBufferCount = 0;
-            }
-
-            _startTime = Raylib.GetTime();
+            _bufferingTask = Task.Run(() => BufferInitialData(token), token);
         }
         else if (State == VideoPlayerState.Paused)
         {
             _startTime = Raylib.GetTime() - _masterClock;
+            if (_hasAudio)
+                Raylib.ResumeAudioStream(_audioStream);
+            State = VideoPlayerState.Playing;
         }
+    }
 
-        if (_hasAudio)
-            Raylib.PlayAudioStream(_audioStream);
-        State = VideoPlayerState.Playing;
+    private void BufferInitialData(CancellationToken token)
+    {
+        try
+        {
+            if (!_justLoaded)
+            {
+                // Reset Video
+                if (_videoFile != null && _frameBuffer != null)
+                {
+                    // Clear queue and pool
+                    lock (_videoFrameQueue)
+                    {
+                        _videoFrameQueue.Clear();
+                        _videoFramePool.Clear();
+                    }
+
+                    // Pre-decode frames
+                    // First frame immediately
+                    if (token.IsCancellationRequested)
+                        return;
+                    using var frame = _videoFile.Video.GetFrame(TimeSpan.Zero);
+                    // We can't update texture here, so just put it in buffer
+                    // Actually, we need to handle the first frame specially in Update
+                    // For now, let's just fill the queue.
+
+                    // Decode subsequent frames into buffer
+                    for (int i = 0; i < VideoBufferSize; i++)
+                    {
+                        if (token.IsCancellationRequested)
+                            return;
+                        if (_videoFile.Video.TryGetNextFrame(out var nextFrame))
+                        {
+                            using (nextFrame)
+                            {
+                                byte[] buffer = new byte[_frameBuffer.Length];
+                                nextFrame.Data.CopyTo(buffer);
+                                lock (_videoFrameQueue)
+                                {
+                                    _videoFrameQueue.Enqueue(buffer);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                // Reset Audio
+                if (_hasAudio)
+                {
+                    // We can't easily reset audio stream here without main thread
+                    // But we can clear the ring buffer
+                    _ringBufferReadPos = 0;
+                    _ringBufferWritePos = 0;
+                    _ringBufferCount = 0;
+                }
+            }
+            else
+            {
+                // Just loaded, ensure ring buffer is clear
+                _ringBufferReadPos = 0;
+                _ringBufferWritePos = 0;
+                _ringBufferCount = 0;
+
+                // Also ensure video buffer is filled if we just loaded
+                if (_videoFile != null && _frameBuffer != null)
+                {
+                    lock (_videoFrameQueue)
+                    {
+                        if (_videoFrameQueue.Count == 0)
+                        {
+                            // Pre-decode frames
+                            // First frame is already on texture from Load(), so start from next?
+                            // Actually Load() reads frame at Zero.
+                            // So we should read subsequent frames.
+                            // But we need to be careful about file position.
+                            // Let's just fill the buffer.
+
+                            // Note: Load() calls GetFrame(Zero). The file position is now after that frame?
+                            // FFMediaToolkit GetFrame(TimeSpan) seeks. TryGetNextFrame continues.
+                            // So if Load used GetFrame(Zero), we are at the start.
+                            // We should probably seek to start to be safe or just continue if we know where we are.
+                            // Let's assume we need to fill from start (skipping the one already loaded if possible, or just overwriting).
+                            // Actually, if we just loaded, the texture shows frame 0.
+                            // We want the queue to have frame 1, 2, 3...
+                            // But GetFrame(Zero) might not advance the internal "next frame" pointer in the way TryGetNextFrame expects if they are mixed.
+                            // Let's just fill the buffer normally.
+
+                            // Decode frames into buffer
+                            for (int i = 0; i < VideoBufferSize; i++)
+                            {
+                                if (token.IsCancellationRequested)
+                                    return;
+                                if (_videoFile.Video.TryGetNextFrame(out var nextFrame))
+                                {
+                                    using (nextFrame)
+                                    {
+                                        byte[] buffer = new byte[_frameBuffer.Length];
+                                        nextFrame.Data.CopyTo(buffer);
+                                        _videoFrameQueue.Enqueue(buffer);
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Pre-buffer audio to avoid initial stutter
+            if (_hasAudio && _audioInitialized && _audioFile != null)
+            {
+                // Fill buffer up to 75% before starting
+                while (_ringBufferCount < (_audioRingBuffer.Length * 3) / 4)
+                {
+                    if (token.IsCancellationRequested)
+                        return;
+                    if (_audioFile.Audio.TryGetNextFrame(out var audioData))
+                    {
+                        using (audioData)
+                        {
+                            WriteToRingBuffer(audioData);
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"VideoPlayer: Buffering failed: {ex.Message}");
+        }
     }
 
     public void Pause()
@@ -223,6 +368,43 @@ public sealed class VideoPlayer : IDisposable
 
     public void Update()
     {
+        if (State == VideoPlayerState.Buffering)
+        {
+            if (_bufferingTask != null && _bufferingTask.IsCompleted)
+            {
+                // Finalize startup on main thread
+                _bufferingTask = null;
+                _bufferingCts?.Dispose();
+                _bufferingCts = null;
+
+                // Push initial audio to Raylib immediately to prevent startup gap
+                if (_hasAudio && _audioInitialized)
+                {
+                    int framesToPush = AudioChunkSize;
+                    int samplesToPush = framesToPush * _audioChannels;
+
+                    // Push first chunk
+                    if (_ringBufferCount >= samplesToPush)
+                    {
+                        ReadFromRingBufferAndPush(framesToPush);
+                    }
+
+                    // Push second chunk if available
+                    if (_ringBufferCount >= samplesToPush)
+                    {
+                        ReadFromRingBufferAndPush(framesToPush);
+                    }
+
+                    Raylib.PlayAudioStream(_audioStream);
+                }
+
+                _justLoaded = false;
+                _startTime = Raylib.GetTime();
+                State = VideoPlayerState.Playing;
+            }
+            return;
+        }
+
         if (State != VideoPlayerState.Playing)
             return;
 
@@ -269,14 +451,76 @@ public sealed class VideoPlayer : IDisposable
         {
             if (_videoFile != null && _frameBuffer != null)
             {
-                if (_videoFile.Video.TryGetNextFrame(_frameBuffer.AsSpan()))
+                // Try to get from queue first
+                byte[]? buffer = null;
+                lock (_videoFrameQueue)
                 {
+                    if (_videoFrameQueue.Count > 0)
+                    {
+                        buffer = _videoFrameQueue.Dequeue();
+                    }
+                }
+
+                if (buffer != null)
+                {
+                    Buffer.BlockCopy(buffer, 0, _frameBuffer, 0, buffer.Length);
                     UpdateTexture();
                     _nextFrameTime += _frameInterval;
+
+                    // Return buffer to pool
+                    _videoFramePool.Push(buffer);
                 }
                 else
                 {
-                    HandlePlaybackComplete();
+                    // Fallback if queue empty (shouldn't happen if we keep up)
+                    if (_videoFile.Video.TryGetNextFrame(_frameBuffer.AsSpan()))
+                    {
+                        UpdateTexture();
+                        _nextFrameTime += _frameInterval;
+                    }
+                    else
+                    {
+                        HandlePlaybackComplete();
+                    }
+                }
+            }
+        }
+
+        // Refill video buffer
+        if (_videoFile != null)
+        {
+            int queueCount;
+            lock (_videoFrameQueue)
+            {
+                queueCount = _videoFrameQueue.Count;
+            }
+
+            if (queueCount < VideoBufferSize)
+            {
+                // Get buffer from pool or create new
+                byte[] buffer;
+                if (_videoFramePool.Count > 0)
+                    buffer = _videoFramePool.Pop();
+                else
+                    buffer = new byte[_frameBuffer!.Length];
+
+                if (_videoFile.Video.TryGetNextFrame(buffer.AsSpan()))
+                {
+                    lock (_videoFrameQueue)
+                    {
+                        _videoFrameQueue.Enqueue(buffer);
+                    }
+                }
+                else
+                {
+                    // End of stream, push back unused buffer
+                    _videoFramePool.Push(buffer);
+
+                    // If queue is also empty, we are done
+                    if (queueCount == 0)
+                    {
+                        HandlePlaybackComplete();
+                    }
                 }
             }
         }
@@ -336,8 +580,8 @@ public sealed class VideoPlayer : IDisposable
         }
         else
         {
-            State = VideoPlayerState.Ended;
             Stop();
+            State = VideoPlayerState.Ended;
         }
     }
 
@@ -426,7 +670,8 @@ public sealed class VideoPlayer : IDisposable
             _audioInitialized = false;
         }
 
-        if (Raylib.IsTextureValid(Texture))
+        // Do not unload default texture (ID 1)
+        if (Texture.Id != 1 && Raylib.IsTextureValid(Texture))
             Raylib.UnloadTexture(Texture);
     }
 }

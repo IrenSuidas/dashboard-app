@@ -32,7 +32,15 @@ ending:
 
   # Credits position (0-100 percentage from left to right)
   # 0 = far left, 50 = center, 100 = far right
-  creditsPositionPercentage: 10
+  creditsPositionPercentage: 7
+
+  # Carousel position (0-100 percentage from left to right)
+  # 0 = far left, 50 = center, 100 = far right
+  carouselPositionPercentage: 70
+
+  # Carousel size (percentage of window height)
+  # The width will be calculated based on 16:9 aspect ratio
+  carouselSizePercentage: 40
 
   # New ending scene configuration
   endingStartDelay: 2.0

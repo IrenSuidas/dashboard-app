@@ -99,33 +99,30 @@ internal sealed partial class EndingScene
                 {
                     ResourceCache.ReleaseTexture(_config.Ending.EmotePath);
                     _emoteTexture = default;
+                    _emoteLoaded = false;
                 }
                 catch (Exception ex)
                 {
                     Logger.Warn($"Cleanup: failed to unload emote texture: {ex.Message}");
                 }
-                _emoteLoaded = false;
             }
 
+            // Carousel cleanup
             try
             {
-                // Ensure any playing music is stopped before release
-                try
-                {
-                    AudioService.Stop(_music);
-                }
-                catch { }
-                ResourceCache.ReleaseMusic(_config.Ending.Music);
-                _music = default;
-                AudioService.Unregister();
+                _carouselVideoPlayer?.Dispose();
             }
             catch (Exception ex)
             {
-                Logger.Warn($"Cleanup: failed to unload music stream: {ex.Message}");
+                Logger.Warn($"Cleanup: failed to dispose video player: {ex.Message}");
             }
+            _carouselVideoPlayer = null;
 
-            // Do NOT close audio device here: leaving it open prevents races while UI returns to main menu
-            IsActive = false;
+            if (_carouselImageLoaded)
+            {
+                Raylib.UnloadTexture(_carouselImageTexture);
+                _carouselImageLoaded = false;
+            }
         }
         else
         {
