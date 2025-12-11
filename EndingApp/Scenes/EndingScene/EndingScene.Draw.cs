@@ -64,7 +64,7 @@ internal sealed partial class EndingScene
                 centerX,
                 centerY - fontSize / 2,
                 fontSize,
-                2,
+                _config.Ending.StartTextSpacing,
                 textColor,
                 _config.Ending.StartTextFontWeight
             );
@@ -96,7 +96,7 @@ internal sealed partial class EndingScene
                 var size = _fontLoader.MeasureText(
                     line,
                     fontSize,
-                    2,
+                    _config.Ending.EndTextSpacing,
                     _config.Ending.EndTextFontWeight
                 );
                 lineHeights.Add(size.Y);
@@ -124,7 +124,7 @@ internal sealed partial class EndingScene
                     centerX,
                     curY,
                     fontSize,
-                    2,
+                    _config.Ending.EndTextSpacing,
                     endTextColor,
                     _config.Ending.EndTextFontWeight
                 );
@@ -163,7 +163,7 @@ internal sealed partial class EndingScene
                 centerX,
                 centerY - cFontSize / 2,
                 cFontSize,
-                2,
+                _config.Ending.CopyrightSpacing,
                 copyColor,
                 _config.Ending.CopyrightFontWeight
             );
@@ -255,15 +255,15 @@ internal sealed partial class EndingScene
             // Draw filename
             if (!string.IsNullOrEmpty(_carouselCurrentFileName) && _fontLoader != null)
             {
-                int fontSize = 24;
-                var textColor = _config.Ending.ValuesColor;
+                int fontSize = _config.Ending.CarouselMediaTitleFontSize;
+                var textColor = _config.Ending.CarouselMediaTitleColor;
                 textColor.A = tint.A;
 
                 var textSize = _fontLoader.MeasureText(
                     _carouselCurrentFileName,
                     fontSize,
-                    2,
-                    FontWeight.Bold
+                    _config.Ending.CarouselMediaTitleSpacing,
+                    _config.Ending.CarouselMediaTitleFontWeight
                 );
                 // Position top-left outside the media
                 int textX = (int)destRect.X;
@@ -273,9 +273,9 @@ internal sealed partial class EndingScene
                     _carouselCurrentFileName,
                     new Vector2(textX, textY),
                     fontSize,
-                    2,
+                    _config.Ending.CarouselMediaTitleSpacing,
                     textColor,
-                    FontWeight.Bold
+                    _config.Ending.CarouselMediaTitleFontWeight
                 );
             }
         }

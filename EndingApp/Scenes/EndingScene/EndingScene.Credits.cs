@@ -52,7 +52,6 @@ internal sealed partial class EndingScene
         const int valueLineSpacing = 4; // Minimal gap between value lines
         const int sectionGap = 8; // Small gap between section title and first value
         const int sectionSpacing = 40; // Larger gap between different sections
-        const float charSpacing = 2;
 
         float currentY = _creditsScrollY;
         // Position credits block using creditsPositionPercentage from config
@@ -69,7 +68,7 @@ internal sealed partial class EndingScene
                     entry.Separator!,
                     new Vector2(creditsLeftX, currentY),
                     sectionFontSize,
-                    charSpacing,
+                    _config.Ending.SectionSpacing,
                     _config.Ending.SectionColor,
                     _config.Ending.SectionFontWeight
                 );
@@ -82,7 +81,7 @@ internal sealed partial class EndingScene
                     entry.Section,
                     new Vector2(creditsLeftX, currentY),
                     sectionFontSize,
-                    charSpacing,
+                    _config.Ending.SectionSpacing,
                     _config.Ending.SectionColor,
                     _config.Ending.SectionFontWeight
                 );
@@ -105,7 +104,7 @@ internal sealed partial class EndingScene
                             left,
                             new Vector2(creditsLeftX, currentY),
                             fontSize,
-                            charSpacing,
+                            _config.Ending.ValueSpacing,
                             _config.Ending.ValuesColor,
                             _config.Ending.ValueFontWeight
                         );
@@ -118,7 +117,7 @@ internal sealed partial class EndingScene
                                 right,
                                 new Vector2(creditsLeftX + colWidth + colGap, currentY),
                                 fontSize,
-                                charSpacing,
+                                _config.Ending.ValueSpacing,
                                 _config.Ending.ValuesColor,
                                 _config.Ending.ValueFontWeight
                             );
@@ -136,7 +135,7 @@ internal sealed partial class EndingScene
                             value,
                             new Vector2(creditsLeftX, currentY),
                             fontSize,
-                            charSpacing,
+                            _config.Ending.ValueSpacing,
                             _config.Ending.ValuesColor,
                             _config.Ending.ValueFontWeight
                         );

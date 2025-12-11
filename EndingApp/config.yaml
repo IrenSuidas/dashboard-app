@@ -30,6 +30,14 @@ ending:
   sectionColorHex: "#3c3232"
   valuesColorHex: "#3c3232"
 
+  # Text spacing (letter-spacing)
+  sectionSpacing: 0.2
+  valueSpacing: 2.0
+  startTextSpacing: 2.0
+  endTextSpacing: 2.0
+  copyrightSpacing: 2.0
+  carouselMediaTitleSpacing: 0.1
+
   # Credits position (0-100 percentage from left to right)
   # 0 = far left, 50 = center, 100 = far right
   creditsPositionPercentage: 7
@@ -41,6 +49,11 @@ ending:
   # Carousel size (percentage of window height)
   # The width will be calculated based on 16:9 aspect ratio
   carouselSizePercentage: 40
+
+  # Carousel media title configuration
+  carouselMediaTitleFontSize: 16
+  carouselMediaTitleFontWeight: bold
+  carouselMediaTitleColorHex: "#3c3232"
 
   # New ending scene configuration
   endingStartDelay: 2.0

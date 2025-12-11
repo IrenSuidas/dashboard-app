@@ -36,6 +36,24 @@ internal sealed class AppConfig
             50
         );
         config.Ending.CarouselSizePercentage = data.GetInt("ending.carouselSizePercentage", 20);
+        config.Ending.CarouselMediaTitleFontSize = data.GetInt(
+            "ending.carouselMediaTitleFontSize",
+            24
+        );
+        config.Ending.CarouselMediaTitleFontWeight = EndingConfig.ParseFontWeight(
+            data.GetString("ending.carouselMediaTitleFontWeight", "bold")
+        );
+        var carouselTitleColor = data.GetColorHex(
+            "ending.carouselMediaTitleColorHex",
+            (255, 255, 255, 255)
+        );
+        config.Ending.CarouselMediaTitleColor = new Color(
+            carouselTitleColor.R,
+            carouselTitleColor.G,
+            carouselTitleColor.B,
+            carouselTitleColor.A
+        );
+
         config.Ending.StartDelay = data.GetFloat("ending.endingStartDelay", 2.0f);
         config.Ending.StartText = data.GetString("ending.endingStartText", "Stream Ending");
         config.Ending.StartTextHideTime = data.GetFloat("ending.endingStartTextHideTime", 3.0f);
@@ -48,6 +66,17 @@ internal sealed class AppConfig
         );
         config.Ending.SectionFontWeight = EndingConfig.ParseFontWeight(
             data.GetString("ending.sectionFontWeight", "regular")
+        );
+
+        // Spacing configuration
+        config.Ending.SectionSpacing = data.GetFloat("ending.sectionSpacing", 2.0f);
+        config.Ending.ValueSpacing = data.GetFloat("ending.valueSpacing", 2.0f);
+        config.Ending.StartTextSpacing = data.GetFloat("ending.startTextSpacing", 2.0f);
+        config.Ending.EndTextSpacing = data.GetFloat("ending.endTextSpacing", 2.0f);
+        config.Ending.CopyrightSpacing = data.GetFloat("ending.copyrightSpacing", 2.0f);
+        config.Ending.CarouselMediaTitleSpacing = data.GetFloat(
+            "ending.carouselMediaTitleSpacing",
+            2.0f
         );
 
         // Load color configuration
@@ -150,6 +179,9 @@ internal sealed class EndingConfig
     public int CreditsPositionPercentage { get; set; } = 60;
     public int CarouselPositionPercentage { get; set; } = 50;
     public int CarouselSizePercentage { get; set; } = 20;
+    public int CarouselMediaTitleFontSize { get; set; } = 24;
+    public FontWeight CarouselMediaTitleFontWeight { get; set; } = FontWeight.Bold;
+    public Color CarouselMediaTitleColor { get; set; } = new Color(255, 255, 255, 255);
     public float StartDelay { get; set; } = 2.0f;
     public string StartText { get; set; } = "Stream Ending";
     public float StartTextHideTime { get; set; } = 3.0f;
@@ -157,6 +189,14 @@ internal sealed class EndingConfig
     public FontWeight ValueFontWeight { get; set; }
     public FontWeight SectionFontWeight { get; set; }
     public FontWeight StartTextFontWeight { get; set; }
+
+    // Spacing configuration
+    public float SectionSpacing { get; set; } = 2.0f;
+    public float ValueSpacing { get; set; } = 2.0f;
+    public float StartTextSpacing { get; set; } = 2.0f;
+    public float EndTextSpacing { get; set; } = 2.0f;
+    public float CopyrightSpacing { get; set; } = 2.0f;
+    public float CarouselMediaTitleSpacing { get; set; } = 2.0f;
 
     // New end text configuration
     public string EndText { get; set; } = "Thanks for watching, see you next time!";
