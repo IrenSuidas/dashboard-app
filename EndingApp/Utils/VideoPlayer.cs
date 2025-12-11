@@ -15,6 +15,7 @@ public enum VideoPlayerState
     Paused,
     Ended,
     Buffering,
+    Loading,
 }
 
 public sealed class VideoPlayer : IDisposable
@@ -68,11 +69,54 @@ public sealed class VideoPlayer : IDisposable
     private Task? _bufferingTask;
     private CancellationTokenSource? _bufferingCts;
 
+    private Task<LoadResult?>? _loadingTask;
+
+    private sealed class LoadResult
+    {
+        public MediaFile VideoFile = null!;
+        public MediaFile? AudioFile;
+        public int Width;
+        public int Height;
+        public double FrameRate;
+        public TimeSpan Duration;
+        public int Stride;
+        public byte[] FrameBuffer = null!;
+        public byte[] TextureBuffer = null!;
+        public bool HasAudio;
+        public int AudioChannels;
+        public int SampleRate;
+    }
+
     public void Load(string filePath)
+    {
+        LoadAsync(filePath);
+        if (_loadingTask != null)
+        {
+            _loadingTask.Wait();
+            if (_loadingTask.Status == TaskStatus.RanToCompletion && _loadingTask.Result != null)
+            {
+                FinishLoad(_loadingTask.Result);
+            }
+            else
+            {
+                // Handle error or cancellation
+                State = VideoPlayerState.Stopped;
+            }
+            _loadingTask = null;
+        }
+    }
+
+    public void LoadAsync(string filePath)
     {
         Dispose();
         _filePath = filePath;
+        State = VideoPlayerState.Loading;
 
+        _loadingTask = Task.Run(() => PerformBackgroundLoad(filePath));
+    }
+
+    private static LoadResult? PerformBackgroundLoad(string filePath)
+    {
         try
         {
             if (!s_ffmpegInitialized)
@@ -81,103 +125,116 @@ public sealed class VideoPlayer : IDisposable
                 s_ffmpegInitialized = true;
             }
 
+            var result = new LoadResult();
+
             // 1. Open Video
             var videoOptions = new MediaOptions
             {
                 StreamsToLoad = MediaMode.Video,
                 VideoPixelFormat = ImagePixelFormat.Rgba32,
             };
-            _videoFile = MediaFile.Open(filePath, videoOptions);
+            result.VideoFile = MediaFile.Open(filePath, videoOptions);
 
-            var info = _videoFile.Video.Info;
-            Width = info.FrameSize.Width;
-            Height = info.FrameSize.Height;
-            FrameRate = info.AvgFrameRate;
-            Duration = info.Duration;
-            _frameInterval = 1.0 / FrameRate;
+            var info = result.VideoFile.Video.Info;
+            result.Width = info.FrameSize.Width;
+            result.Height = info.FrameSize.Height;
+            result.FrameRate = info.AvgFrameRate;
+            result.Duration = info.Duration;
 
             // 2. Setup Buffers
             // Read first frame to get stride and size
-            using var testFrame = _videoFile.Video.GetFrame(TimeSpan.Zero);
-            _stride = testFrame.Stride;
-            _frameBuffer = new byte[testFrame.Data.Length];
-            _textureBuffer = new byte[Width * Height * 4];
-
-            // Clear pools
-            _videoFrameQueue.Clear();
-            _videoFramePool.Clear();
-
-            // 3. Setup Texture
-            var image = Raylib.GenImageColor(Width, Height, Color.Black);
-            Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8A8);
-            Texture = Raylib.LoadTextureFromImage(image);
-            Raylib.UnloadImage(image);
-            Raylib.SetTextureFilter(Texture, TextureFilter.Bilinear);
+            using var testFrame = result.VideoFile.Video.GetFrame(TimeSpan.Zero);
+            result.Stride = testFrame.Stride;
+            result.FrameBuffer = new byte[testFrame.Data.Length];
+            result.TextureBuffer = new byte[result.Width * result.Height * 4];
 
             // Load initial frame content
-            testFrame.Data.CopyTo(_frameBuffer);
-            UpdateTexture();
+            testFrame.Data.CopyTo(result.FrameBuffer);
 
-            // 4. Setup Audio
-            SetupAudio();
+            // 3. Setup Audio (Background part)
+            try
+            {
+                var audioOptions = new MediaOptions { StreamsToLoad = MediaMode.Audio };
+                result.AudioFile = MediaFile.Open(filePath, audioOptions);
 
-            State = VideoPlayerState.Stopped;
-            _justLoaded = true;
+                if (result.AudioFile.HasAudio)
+                {
+                    var audioInfo = result.AudioFile.Audio.Info;
+                    result.HasAudio = true;
+                    result.AudioChannels = audioInfo.NumChannels;
+                    result.SampleRate = audioInfo.SampleRate;
+                }
+                else
+                {
+                    result.AudioFile.Dispose();
+                    result.AudioFile = null;
+                    result.HasAudio = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"VideoPlayer: Audio setup failed: {ex.Message}");
+                result.HasAudio = false;
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
             Logger.Error($"VideoPlayer: Load failed: {ex.Message}");
-            Dispose();
+            return null;
         }
     }
 
-    private void SetupAudio()
+    private void FinishLoad(LoadResult result)
     {
-        try
+        _videoFile = result.VideoFile;
+        _audioFile = result.AudioFile;
+        Width = result.Width;
+        Height = result.Height;
+        FrameRate = result.FrameRate;
+        Duration = result.Duration;
+        _frameInterval = 1.0 / FrameRate;
+        _stride = result.Stride;
+        _frameBuffer = result.FrameBuffer;
+        _textureBuffer = result.TextureBuffer;
+        _hasAudio = result.HasAudio;
+        _audioChannels = result.AudioChannels;
+
+        // Clear pools
+        _videoFrameQueue.Clear();
+        _videoFramePool.Clear();
+
+        // Setup Texture (Main Thread)
+        var image = Raylib.GenImageColor(Width, Height, Color.Black);
+        Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8A8);
+        Texture = Raylib.LoadTextureFromImage(image);
+        Raylib.UnloadImage(image);
+        Raylib.SetTextureFilter(Texture, TextureFilter.Bilinear);
+
+        UpdateTexture();
+
+        // Setup Audio Stream (Main Thread)
+        if (_hasAudio)
         {
-            // Close existing if any
-            _audioFile?.Dispose();
-            _audioFile = null;
-
-            var audioOptions = new MediaOptions { StreamsToLoad = MediaMode.Audio };
-            _audioFile = MediaFile.Open(_filePath, audioOptions);
-
-            if (_audioFile.HasAudio)
+            if (!_audioInitialized)
             {
-                var audioInfo = _audioFile.Audio.Info;
-
-                // Only initialize Raylib audio stream once
-                if (!_audioInitialized)
+                if (AudioService.Register())
                 {
-                    if (AudioService.Register())
-                    {
-                        Raylib.SetAudioStreamBufferSizeDefault(4096);
-                        _audioStream = Raylib.LoadAudioStream(
-                            (uint)audioInfo.SampleRate,
-                            32, // 32-bit float
-                            (uint)audioInfo.NumChannels
-                        );
-                        _audioChannels = audioInfo.NumChannels;
-                        _hasAudio = true;
-                        _audioInitialized = true;
-
-                        // Initialize ring buffer
-                        _audioRingBuffer = new float[RingBufferSize * _audioChannels];
-                    }
+                    Raylib.SetAudioStreamBufferSizeDefault(4096);
+                    _audioStream = Raylib.LoadAudioStream(
+                        (uint)result.SampleRate,
+                        32, // 32-bit float
+                        (uint)result.AudioChannels
+                    );
+                    _audioInitialized = true;
+                    _audioRingBuffer = new float[RingBufferSize * _audioChannels];
                 }
             }
-            else
-            {
-                _audioFile.Dispose();
-                _audioFile = null;
-                _hasAudio = false;
-            }
         }
-        catch (Exception ex)
-        {
-            Logger.Warn($"VideoPlayer: Audio setup failed: {ex.Message}");
-            _hasAudio = false;
-        }
+
+        State = VideoPlayerState.Stopped;
+        _justLoaded = true;
     }
 
     public void Play()
@@ -368,6 +425,27 @@ public sealed class VideoPlayer : IDisposable
 
     public void Update()
     {
+        if (State == VideoPlayerState.Loading)
+        {
+            if (_loadingTask != null && _loadingTask.IsCompleted)
+            {
+                if (
+                    _loadingTask.Status == TaskStatus.RanToCompletion
+                    && _loadingTask.Result != null
+                )
+                {
+                    FinishLoad(_loadingTask.Result);
+                }
+                else
+                {
+                    Logger.Error("VideoPlayer: Async load failed or cancelled.");
+                    State = VideoPlayerState.Stopped;
+                }
+                _loadingTask = null;
+            }
+            return;
+        }
+
         if (State == VideoPlayerState.Buffering)
         {
             if (_bufferingTask != null && _bufferingTask.IsCompleted)
@@ -673,5 +751,16 @@ public sealed class VideoPlayer : IDisposable
         // Do not unload default texture (ID 1)
         if (Texture.Id != 1 && Raylib.IsTextureValid(Texture))
             Raylib.UnloadTexture(Texture);
+
+        // Clear buffers to help GC
+        _frameBuffer = null;
+        _textureBuffer = null;
+        _audioRingBuffer = [];
+        _videoFrameQueue.Clear();
+        _videoFramePool.Clear();
+
+        // Force GC collection to reclaim large buffers immediately
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
     }
 }

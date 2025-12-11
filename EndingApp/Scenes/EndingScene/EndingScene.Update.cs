@@ -248,8 +248,34 @@ internal sealed partial class EndingScene
             {
                 case CarouselState.Hidden:
                     LoadNextCarouselItem();
-                    _carouselFader.StartFadeIn(1.0f); // Fade in duration
-                    _carouselState = CarouselState.FadingIn;
+                    if (_carouselCurrentItemType == CarouselItemType.Video)
+                    {
+                        _carouselState = CarouselState.Loading;
+                    }
+                    else
+                    {
+                        _carouselFader.StartFadeIn(1.0f); // Fade in duration
+                        _carouselState = CarouselState.FadingIn;
+                    }
+                    break;
+
+                case CarouselState.Loading:
+                    if (_carouselVideoPlayer != null)
+                    {
+                        _carouselVideoPlayer.Update();
+                        // If video player finished loading (it goes to Stopped state after load)
+                        if (_carouselVideoPlayer.State == Utils.VideoPlayerState.Stopped)
+                        {
+                            _carouselVideoPlayer.Play();
+                            _carouselFader.StartFadeIn(1.0f);
+                            _carouselState = CarouselState.FadingIn;
+                        }
+                    }
+                    else
+                    {
+                        // Should not happen if type is video
+                        _carouselState = CarouselState.Hidden;
+                    }
                     break;
 
                 case CarouselState.FadingIn:

@@ -60,6 +60,7 @@ internal sealed partial class EndingScene
     private enum CarouselState
     {
         Hidden,
+        Loading,
         FadingIn,
         Playing,
         FadingOut,

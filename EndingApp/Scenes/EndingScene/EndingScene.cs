@@ -165,8 +165,8 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".webm")
         {
             _carouselCurrentItemType = CarouselItemType.Video;
-            _carouselVideoPlayer?.Load(path);
-            _carouselVideoPlayer?.Play();
+            _carouselVideoPlayer?.LoadAsync(path);
+
             // Video player handles looping internally if set, but we want to play once then next.
             if (_carouselVideoPlayer != null)
                 _carouselVideoPlayer.IsLooping = false;
