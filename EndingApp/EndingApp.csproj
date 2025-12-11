@@ -33,6 +33,10 @@
     <None Update="assets/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="assets/carousel/**/*" Condition="'$(Configuration)' == 'Release'">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
     <None Update="config.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -43,16 +47,26 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <!-- Also copy ffmpeg DLLs into the runtime target folder so native loaders can find them automatically -->
-    <None Include="ffmpeg\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <TargetPath>runtimes\win-x64\native\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FFMediaToolkit" />
     <PackageReference Include="Raylib-cs" />
   </ItemGroup>
+
+  <Target
+    Name="CreateCarouselFolder"
+    AfterTargets="Build"
+    Condition="'$(Configuration)' == 'Release'"
+  >
+    <MakeDir Directories="$(OutDir)assets/carousel" />
+  </Target>
+
+  <Target
+    Name="CreateCarouselFolderPublish"
+    AfterTargets="Publish"
+    Condition="'$(Configuration)' == 'Release'"
+  >
+    <MakeDir Directories="$(PublishDir)assets/carousel" />
+  </Target>
 </Project>

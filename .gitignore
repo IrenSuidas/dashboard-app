@@ -24,3 +24,6 @@ bld/
 msbuild.log
 msbuild.err
 msbuild.wrn
+
+# Carousel media
+EndingApp/assets/carousel/*
