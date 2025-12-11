@@ -152,10 +152,19 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         }
     }
 
-    private void LoadNextCarouselItem()
+    private bool LoadNextCarouselItem()
     {
         if (_carouselItems.Count == 0)
-            return;
+            return false;
+
+        // Calculate remaining time
+        // Music starts after StartDelay.
+        // Effective end time is SongDuration - 15s.
+        float currentMusicTime = Math.Max(0f, _elapsedTime - _config.Ending.StartDelay);
+        float timeLeft = _songDuration - 15f - currentMusicTime;
+
+        if (timeLeft <= 0f)
+            return false;
 
         _carouselIndex = (_carouselIndex + 1) % _carouselItems.Count;
         string path = _carouselItems[_carouselIndex];
@@ -164,6 +173,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
         if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".webm")
         {
+            // For videos, we load first, then check duration in Update()
             _carouselCurrentItemType = CarouselItemType.Video;
             _carouselVideoPlayer?.LoadAsync(path);
 
@@ -173,9 +183,14 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
             // Duck background music volume when video starts
             _targetMusicVolume = 0.5f;
+            return true;
         }
         else
         {
+            // For images, check if we have enough time (5 seconds)
+            if (timeLeft < 5f)
+                return false;
+
             _carouselCurrentItemType = CarouselItemType.Image;
             if (_carouselImageLoaded)
             {
@@ -188,6 +203,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
             // Restore background music volume for images
             _targetMusicVolume = 1.0f;
+            return true;
         }
     }
 

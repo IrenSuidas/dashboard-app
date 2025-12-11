@@ -247,15 +247,22 @@ internal sealed partial class EndingScene
             switch (_carouselState)
             {
                 case CarouselState.Hidden:
-                    LoadNextCarouselItem();
-                    if (_carouselCurrentItemType == CarouselItemType.Video)
+                    if (LoadNextCarouselItem())
                     {
-                        _carouselState = CarouselState.Loading;
+                        if (_carouselCurrentItemType == CarouselItemType.Video)
+                        {
+                            _carouselState = CarouselState.Loading;
+                        }
+                        else
+                        {
+                            _carouselFader.StartFadeIn(1.0f); // Fade in duration
+                            _carouselState = CarouselState.FadingIn;
+                        }
                     }
                     else
                     {
-                        _carouselFader.StartFadeIn(1.0f); // Fade in duration
-                        _carouselState = CarouselState.FadingIn;
+                        // No more items or not enough time
+                        _carouselState = CarouselState.Finished;
                     }
                     break;
 
@@ -266,9 +273,26 @@ internal sealed partial class EndingScene
                         // If video player finished loading (it goes to Stopped state after load)
                         if (_carouselVideoPlayer.State == Utils.VideoPlayerState.Stopped)
                         {
-                            _carouselVideoPlayer.Play();
-                            _carouselFader.StartFadeIn(1.0f);
-                            _carouselState = CarouselState.FadingIn;
+                            // Check if we have enough time for this video
+                            float currentMusicTime = Math.Max(
+                                0f,
+                                _elapsedTime - _config.Ending.StartDelay
+                            );
+                            float timeLeft = (_songDuration - 15f) - currentMusicTime;
+
+                            if (_carouselVideoPlayer.Duration.TotalSeconds > timeLeft)
+                            {
+                                // Not enough time, stop and finish
+                                _carouselVideoPlayer.Stop(); // Ensure it's stopped/cleaned if needed
+                                _carouselState = CarouselState.Finished;
+                                _targetMusicVolume = 1.0f; // Restore volume
+                            }
+                            else
+                            {
+                                _carouselVideoPlayer.Play();
+                                _carouselFader.StartFadeIn(1.0f);
+                                _carouselState = CarouselState.FadingIn;
+                            }
                         }
                     }
                     else

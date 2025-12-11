@@ -64,6 +64,7 @@ internal sealed partial class EndingScene
         FadingIn,
         Playing,
         FadingOut,
+        Finished,
     }
 
     private enum CarouselItemType
