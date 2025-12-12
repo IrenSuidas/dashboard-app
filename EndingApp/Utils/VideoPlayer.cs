@@ -71,6 +71,15 @@ public sealed class VideoPlayer : IDisposable
 
     private Task<LoadResult?>? _loadingTask;
 
+    public static void InitializeFFmpeg()
+    {
+        if (!s_ffmpegInitialized)
+        {
+            FFmpegLoader.FFmpegPath = GetFFmpegPath();
+            s_ffmpegInitialized = true;
+        }
+    }
+
     private sealed class LoadResult
     {
         public MediaFile VideoFile = null!;
@@ -119,11 +128,7 @@ public sealed class VideoPlayer : IDisposable
     {
         try
         {
-            if (!s_ffmpegInitialized)
-            {
-                FFmpegLoader.FFmpegPath = GetFFmpegPath();
-                s_ffmpegInitialized = true;
-            }
+            InitializeFFmpeg();
 
             var result = new LoadResult();
 
@@ -381,7 +386,7 @@ public sealed class VideoPlayer : IDisposable
             if (_hasAudio && _audioInitialized && _audioFile != null)
             {
                 // Fill buffer up to 75% before starting
-                while (_ringBufferCount < (_audioRingBuffer.Length * 3) / 4)
+                while (_ringBufferCount < _audioRingBuffer.Length * 3 / 4)
                 {
                     if (token.IsCancellationRequested)
                         return;

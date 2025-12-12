@@ -271,14 +271,14 @@ internal sealed partial class EndingScene
                     {
                         _carouselVideoPlayer.Update();
                         // If video player finished loading (it goes to Stopped state after load)
-                        if (_carouselVideoPlayer.State == Utils.VideoPlayerState.Stopped)
+                        if (_carouselVideoPlayer.State == VideoPlayerState.Stopped)
                         {
                             // Check if we have enough time for this video
                             float currentMusicTime = Math.Max(
                                 0f,
                                 _elapsedTime - _config.Ending.StartDelay
                             );
-                            float timeLeft = (_songDuration - 15f) - currentMusicTime;
+                            float timeLeft = _songDuration - 20f - currentMusicTime;
 
                             if (_carouselVideoPlayer.Duration.TotalSeconds > timeLeft)
                             {
@@ -318,7 +318,7 @@ internal sealed partial class EndingScene
                     if (_carouselCurrentItemType == CarouselItemType.Video)
                     {
                         _carouselVideoPlayer?.Update();
-                        if (_carouselVideoPlayer?.State == Utils.VideoPlayerState.Ended)
+                        if (_carouselVideoPlayer?.State == VideoPlayerState.Ended)
                         {
                             _carouselFader.StartFadeOut(1.0f);
                             _carouselState = CarouselState.FadingOut;

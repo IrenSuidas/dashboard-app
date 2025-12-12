@@ -23,20 +23,20 @@ internal sealed partial class EndingScene
     private bool _musicStopped;
     private bool _creditsStarted;
     private bool _showStartText;
-    private Utils.Fader _startTextFader;
+    private Fader _startTextFader;
     private bool _startTextPlayed;
     private bool _startTextHasFadedOut;
 
     // End text state
     private bool _endTextStarted;
     private bool _showEndText;
-    private Utils.Fader _endTextFader;
+    private Fader _endTextFader;
 
     // flag to prevent re-triggering end text fade
     private bool _endTextHasFadedOut;
     private float _endTextShowElapsed;
     private bool _endBackgroundActive; // When true, draw plain background color instead of image
-    private Utils.Fader _endBackgroundFader;
+    private Fader _endBackgroundFader;
     private bool _endBackgroundPlayed;
 
     // Copyright text state
@@ -46,16 +46,23 @@ internal sealed partial class EndingScene
     private float _copyrightAlpha;
 
     // Carousel state
-    private List<string> _carouselItems = [];
+    private List<CarouselItem> _carouselItems = [];
     private int _carouselIndex = -1;
     private CarouselState _carouselState = CarouselState.Hidden;
-    private Utils.Fader _carouselFader;
+    private Fader _carouselFader;
     private float _carouselTimer;
-    private Utils.VideoPlayer? _carouselVideoPlayer;
+    private VideoPlayer? _carouselVideoPlayer;
     private Texture2D _carouselImageTexture;
     private bool _carouselImageLoaded;
     private CarouselItemType _carouselCurrentItemType;
     private string _carouselCurrentFileName = "";
+
+    private sealed class CarouselItem
+    {
+        public string Path { get; set; } = "";
+        public CarouselItemType Type { get; set; }
+        public TimeSpan? Duration { get; set; }
+    }
 
     private enum CarouselState
     {

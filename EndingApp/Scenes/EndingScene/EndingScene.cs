@@ -109,7 +109,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _carouselFader.Reset();
         _carouselTimer = 0f;
         _carouselVideoPlayer?.Dispose();
-        _carouselVideoPlayer = new Utils.VideoPlayer();
+        _carouselVideoPlayer = new VideoPlayer();
         if (_carouselImageLoaded)
         {
             Raylib.UnloadTexture(_carouselImageTexture);
@@ -143,12 +143,64 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
             // Randomize
             var rng = new Random();
-            _carouselItems = files.OrderBy(x => rng.Next()).ToList();
+            var shuffledFiles = files.OrderBy(x => rng.Next()).ToList();
+
+            foreach (string? file in shuffledFiles)
+            {
+                string ext = Path.GetExtension(file).ToLowerInvariant();
+                bool isVideo = ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".webm";
+                _carouselItems.Add(
+                    new CarouselItem
+                    {
+                        Path = file,
+                        Type = isVideo ? CarouselItemType.Video : CarouselItemType.Image,
+                        Duration = isVideo ? null : TimeSpan.FromSeconds(5),
+                    }
+                );
+            }
+
             Logger.Info($"EndingScene: Loaded {_carouselItems.Count} carousel items.");
+
+            // Start preloading video durations in background
+            Task.Run(PreloadVideoDurations);
         }
         else
         {
             Logger.Warn($"EndingScene: Carousel directory not found at {carouselPath}");
+        }
+    }
+
+    private void PreloadVideoDurations()
+    {
+        try
+        {
+            VideoPlayer.InitializeFFmpeg();
+
+            foreach (var item in _carouselItems)
+            {
+                if (item.Type == CarouselItemType.Video && item.Duration == null)
+                {
+                    try
+                    {
+                        var options = new FFMediaToolkit.Decoding.MediaOptions
+                        {
+                            StreamsToLoad = FFMediaToolkit.Decoding.MediaMode.Video,
+                        };
+                        using var file = FFMediaToolkit.Decoding.MediaFile.Open(item.Path, options);
+                        item.Duration = file.Video.Info.Duration;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn(
+                            $"EndingScene: Failed to preload duration for {Path.GetFileName(item.Path)}: {ex.Message}"
+                        );
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"EndingScene: PreloadVideoDurations failed: {ex.Message}");
         }
     }
 
@@ -159,19 +211,63 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
         // Calculate remaining time
         // Music starts after StartDelay.
-        // Effective end time is SongDuration - 15s.
+        // Effective end time is SongDuration - 20s.
         float currentMusicTime = Math.Max(0f, _elapsedTime - _config.Ending.StartDelay);
-        float timeLeft = _songDuration - 15f - currentMusicTime;
+        float timeLeft = _songDuration - 20f - currentMusicTime;
 
         if (timeLeft <= 0f)
             return false;
 
-        _carouselIndex = (_carouselIndex + 1) % _carouselItems.Count;
-        string path = _carouselItems[_carouselIndex];
-        string ext = Path.GetExtension(path).ToLowerInvariant();
+        // Find the next suitable item
+        int foundIndex = -1;
+        int startIndex = (_carouselIndex + 1) % _carouselItems.Count;
+
+        // First pass: Try to find a video that fits
+        for (int i = 0; i < _carouselItems.Count; i++)
+        {
+            int idx = (startIndex + i) % _carouselItems.Count;
+            var item = _carouselItems[idx];
+
+            if (item.Type == CarouselItemType.Video)
+            {
+                // If duration is unknown (null), we assume it fits (optimistic)
+                // If duration is known, check if it fits
+                if (item.Duration == null || item.Duration.Value.TotalSeconds <= timeLeft)
+                {
+                    foundIndex = idx;
+                    break;
+                }
+            }
+        }
+
+        // Second pass: If no video fits, try to find an image that fits
+        if (foundIndex == -1)
+        {
+            for (int i = 0; i < _carouselItems.Count; i++)
+            {
+                int idx = (startIndex + i) % _carouselItems.Count;
+                var item = _carouselItems[idx];
+
+                if (item.Type == CarouselItemType.Image)
+                {
+                    if (timeLeft >= 5f)
+                    {
+                        foundIndex = idx;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (foundIndex == -1)
+            return false;
+
+        _carouselIndex = foundIndex;
+        var selectedItem = _carouselItems[_carouselIndex];
+        string path = selectedItem.Path;
         _carouselCurrentFileName = Path.GetFileNameWithoutExtension(path);
 
-        if (ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".webm")
+        if (selectedItem.Type == CarouselItemType.Video)
         {
             // For videos, we load first, then check duration in Update()
             _carouselCurrentItemType = CarouselItemType.Video;
@@ -187,10 +283,6 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         }
         else
         {
-            // For images, check if we have enough time (5 seconds)
-            if (timeLeft < 5f)
-                return false;
-
             _carouselCurrentItemType = CarouselItemType.Image;
             if (_carouselImageLoaded)
             {
