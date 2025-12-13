@@ -38,6 +38,16 @@ internal sealed partial class EndingScene
         float dt = Raylib.GetFrameTime();
         _elapsedTime += dt;
 
+        // Update overlay
+        if (_overlayPlayer != null)
+        {
+            _overlayPlayer.Update();
+            if (_overlayPlayer.State == VideoPlayerState.Stopped)
+            {
+                _overlayPlayer.Play();
+            }
+        }
+
         float startDelay = _config.Ending.StartDelay;
         float startTextHideTime = _config.Ending.StartTextHideTime;
 

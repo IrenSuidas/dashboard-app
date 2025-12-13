@@ -8,6 +8,10 @@ ending:
   # Music file to play during the ending
   music: assets/music/remix.mp3
 
+  overlay: assets/images/overlay.gif
+  overlayOpacity: 0.2
+  overlayZoom: 200
+
   # Window dimensions for the ending scene
   width: 1280
   height: 720

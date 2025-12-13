@@ -163,6 +163,11 @@ internal sealed class AppConfig
             1.0f
         );
 
+        // Overlay configuration
+        config.Ending.OverlayPath = data.GetString("ending.overlay", "");
+        config.Ending.OverlayOpacity = data.GetFloat("ending.overlayOpacity", 0.2f);
+        config.Ending.OverlayZoom = data.GetInt("ending.overlayZoom", 100);
+
         return config;
     }
 }
@@ -236,4 +241,8 @@ internal sealed class EndingConfig
     public FontWeight CopyrightFontWeight { get; set; } = FontWeight.Regular;
     public Color CopyrightColor { get; set; } = new Color(200, 200, 200, 255);
     public float CopyrightFadeInDuration { get; set; } = 1.0f;
+
+    public string OverlayPath { get; set; } = "";
+    public float OverlayOpacity { get; set; } = 0.2f;
+    public int OverlayZoom { get; set; } = 100;
 }

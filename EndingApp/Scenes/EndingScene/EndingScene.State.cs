@@ -45,6 +45,9 @@ internal sealed partial class EndingScene
     private float _copyrightFadeElapsed;
     private float _copyrightAlpha;
 
+    // Overlay state
+    private VideoPlayer? _overlayPlayer;
+
     // Carousel state
     private List<CarouselItem> _carouselItems = [];
     private int _carouselIndex = -1;

@@ -62,6 +62,16 @@ internal sealed partial class EndingScene
             _emoteTexture = ResourceCache.LoadTexture(_config.Ending.EmotePath);
             _emoteLoaded = true;
         }
+
+        // Load overlay if provided
+        if (
+            !string.IsNullOrEmpty(_config.Ending.OverlayPath)
+            && File.Exists(_config.Ending.OverlayPath)
+        )
+        {
+            _overlayPlayer = new VideoPlayer { IsLooping = true };
+            _overlayPlayer.LoadAsync(_config.Ending.OverlayPath);
+        }
     }
 
     public void Cleanup()
@@ -73,69 +83,56 @@ internal sealed partial class EndingScene
         long memBefore = Diagnostics.GetPrivateMemoryMB();
         Diagnostics.LogMemory("Cleanup: memory before cleanup", memBefore);
 
-        if (IsActive)
+        // Unload only if the texture handles are valid
+        try
         {
-            // Unload only if the texture handles are valid
-            try
+            if (_backgroundTexture.Id != 0)
             {
-                if (_backgroundTexture.Id != 0)
-                {
-                    // Release the cached texture via path
-                    ResourceCache.ReleaseTexture(_config.Ending.BackgroundImage);
-                    _backgroundTexture = default;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn($"Cleanup: failed to unload background texture: {ex.Message}");
-            }
-
-            _fontLoader?.Dispose();
-            _fontLoader = null;
-
-            if (_emoteLoaded && _emoteTexture.Id != 0)
-            {
-                try
-                {
-                    ResourceCache.ReleaseTexture(_config.Ending.EmotePath);
-                    _emoteTexture = default;
-                    _emoteLoaded = false;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warn($"Cleanup: failed to unload emote texture: {ex.Message}");
-                }
-            }
-
-            // Carousel cleanup
-            try
-            {
-                _carouselVideoPlayer?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn($"Cleanup: failed to dispose video player: {ex.Message}");
-            }
-            _carouselVideoPlayer = null;
-
-            if (_carouselImageLoaded)
-            {
-                Raylib.UnloadTexture(_carouselImageTexture);
-                _carouselImageLoaded = false;
+                // Release the cached texture via path
+                ResourceCache.ReleaseTexture(_config.Ending.BackgroundImage);
+                _backgroundTexture = default;
             }
         }
-        else
+        catch (Exception ex)
         {
-            // If not active, attempt to safely unload any remaining allocated textures and fonts
+            Logger.Warn($"Cleanup: failed to unload background texture: {ex.Message}");
+        }
+
+        _fontLoader?.Dispose();
+        _fontLoader = null;
+
+        if (_emoteLoaded && _emoteTexture.Id != 0)
+        {
             try
             {
-                if (_backgroundTexture.Id != 0)
-                {
-                    ResourceCache.ReleaseTexture(_config.Ending.BackgroundImage);
-                    _backgroundTexture = default;
-                }
+                ResourceCache.ReleaseTexture(_config.Ending.EmotePath);
+                _emoteTexture = default;
+                _emoteLoaded = false;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Cleanup: failed to unload emote texture: {ex.Message}");
+            }
+        }
+
+        _overlayPlayer?.Dispose();
+        _overlayPlayer = null;
+
+        // Carousel cleanup
+        try
+        {
+            _carouselVideoPlayer?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Cleanup: failed to dispose video player: {ex.Message}");
+        }
+        _carouselVideoPlayer = null;
+
+        if (_carouselImageLoaded)
+        {
+            Raylib.UnloadTexture(_carouselImageTexture);
+            _carouselImageLoaded = false;
         }
 
         _cleanedUp = true;

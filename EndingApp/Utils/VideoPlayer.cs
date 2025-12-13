@@ -36,8 +36,10 @@ public sealed class VideoPlayer : IDisposable
     private string _filePath = "";
     private MediaFile? _videoFile;
     private MediaFile? _audioFile;
-    private byte[]? _frameBuffer;
-    private byte[]? _textureBuffer;
+    private int _frameDataSize; // Size of one frame in bytes
+    private byte[]? _fallbackBuffer; // Used for direct decoding if queue is empty
+    private byte[]? _textureBuffer; // Used only if stride mismatch
+    private float[]? _audioPushBuffer; // Reused buffer for pushing audio
     private int _stride;
 
     private double _masterClock;
@@ -60,7 +62,7 @@ public sealed class VideoPlayer : IDisposable
     private const int AudioChunkSize = 4096; // Size to push to Raylib
 
     // Video Frame Buffer
-    private const int VideoBufferSize = 15;
+    private const int VideoBufferSize = 5; // Reduced from 15 to 5 to save memory
     private readonly Queue<byte[]> _videoFrameQueue = new();
     private readonly Stack<byte[]> _videoFramePool = new();
 
@@ -89,8 +91,7 @@ public sealed class VideoPlayer : IDisposable
         public double FrameRate;
         public TimeSpan Duration;
         public int Stride;
-        public byte[] FrameBuffer = null!;
-        public byte[] TextureBuffer = null!;
+        public byte[] InitialFrame = null!;
         public bool HasAudio;
         public int AudioChannels;
         public int SampleRate;
@@ -150,11 +151,10 @@ public sealed class VideoPlayer : IDisposable
             // Read first frame to get stride and size
             using var testFrame = result.VideoFile.Video.GetFrame(TimeSpan.Zero);
             result.Stride = testFrame.Stride;
-            result.FrameBuffer = new byte[testFrame.Data.Length];
-            result.TextureBuffer = new byte[result.Width * result.Height * 4];
+            result.InitialFrame = new byte[testFrame.Data.Length];
 
             // Load initial frame content
-            testFrame.Data.CopyTo(result.FrameBuffer);
+            testFrame.Data.CopyTo(result.InitialFrame);
 
             // 3. Setup Audio (Background part)
             try
@@ -201,8 +201,15 @@ public sealed class VideoPlayer : IDisposable
         Duration = result.Duration;
         _frameInterval = 1.0 / FrameRate;
         _stride = result.Stride;
-        _frameBuffer = result.FrameBuffer;
-        _textureBuffer = result.TextureBuffer;
+        _frameDataSize = result.InitialFrame.Length;
+        _fallbackBuffer = new byte[_frameDataSize];
+
+        // Only allocate texture buffer if stride mismatch requires repacking
+        if (_stride != Width * 4)
+        {
+            _textureBuffer = new byte[Width * Height * 4];
+        }
+
         _hasAudio = result.HasAudio;
         _audioChannels = result.AudioChannels;
 
@@ -217,7 +224,7 @@ public sealed class VideoPlayer : IDisposable
         Raylib.UnloadImage(image);
         Raylib.SetTextureFilter(Texture, TextureFilter.Bilinear);
 
-        UpdateTexture();
+        UpdateTexture(result.InitialFrame);
 
         // Setup Audio Stream (Main Thread)
         if (_hasAudio)
@@ -234,6 +241,7 @@ public sealed class VideoPlayer : IDisposable
                     );
                     _audioInitialized = true;
                     _audioRingBuffer = new float[RingBufferSize * _audioChannels];
+                    _audioPushBuffer = new float[4096 * _audioChannels]; // Pre-allocate push buffer
                 }
             }
         }
@@ -283,7 +291,7 @@ public sealed class VideoPlayer : IDisposable
             if (!_justLoaded)
             {
                 // Reset Video
-                if (_videoFile != null && _frameBuffer != null)
+                if (_videoFile != null)
                 {
                     // Clear queue and pool
                     lock (_videoFrameQueue)
@@ -310,7 +318,7 @@ public sealed class VideoPlayer : IDisposable
                         {
                             using (nextFrame)
                             {
-                                byte[] buffer = new byte[_frameBuffer.Length];
+                                byte[] buffer = new byte[_frameDataSize];
                                 nextFrame.Data.CopyTo(buffer);
                                 lock (_videoFrameQueue)
                                 {
@@ -343,7 +351,7 @@ public sealed class VideoPlayer : IDisposable
                 _ringBufferCount = 0;
 
                 // Also ensure video buffer is filled if we just loaded
-                if (_videoFile != null && _frameBuffer != null)
+                if (_videoFile != null)
                 {
                     lock (_videoFrameQueue)
                     {
@@ -375,7 +383,7 @@ public sealed class VideoPlayer : IDisposable
                                 {
                                     using (nextFrame)
                                     {
-                                        byte[] buffer = new byte[_frameBuffer.Length];
+                                        byte[] buffer = new byte[_frameDataSize];
                                         nextFrame.Data.CopyTo(buffer);
                                         _videoFrameQueue.Enqueue(buffer);
                                     }
@@ -540,7 +548,7 @@ public sealed class VideoPlayer : IDisposable
         // 2. Handle Video
         if (_masterClock >= _nextFrameTime)
         {
-            if (_videoFile != null && _frameBuffer != null)
+            if (_videoFile != null)
             {
                 // Try to get from queue first
                 byte[]? buffer = null;
@@ -554,8 +562,7 @@ public sealed class VideoPlayer : IDisposable
 
                 if (buffer != null)
                 {
-                    Buffer.BlockCopy(buffer, 0, _frameBuffer, 0, buffer.Length);
-                    UpdateTexture();
+                    UpdateTexture(buffer);
                     _nextFrameTime += _frameInterval;
 
                     // Return buffer to pool
@@ -564,9 +571,9 @@ public sealed class VideoPlayer : IDisposable
                 else
                 {
                     // Fallback if queue empty (shouldn't happen if we keep up)
-                    if (_videoFile.Video.TryGetNextFrame(_frameBuffer.AsSpan()))
+                    if (_videoFile.Video.TryGetNextFrame(_fallbackBuffer.AsSpan()))
                     {
-                        UpdateTexture();
+                        UpdateTexture(_fallbackBuffer!);
                         _nextFrameTime += _frameInterval;
                     }
                     else
@@ -593,7 +600,7 @@ public sealed class VideoPlayer : IDisposable
                 if (_videoFramePool.Count > 0)
                     buffer = _videoFramePool.Pop();
                 else
-                    buffer = new byte[_frameBuffer!.Length];
+                    buffer = new byte[_frameDataSize];
 
                 if (_videoFile.Video.TryGetNextFrame(buffer.AsSpan()))
                 {
@@ -640,23 +647,21 @@ public sealed class VideoPlayer : IDisposable
     private unsafe void ReadFromRingBufferAndPush(int frames)
     {
         int samples = frames * _audioChannels;
-        // We need a contiguous buffer for Raylib.UpdateAudioStream
-        // Since ring buffer might wrap, we copy to a temp buffer.
-        // Allocating every frame is bad, but let's optimize later if needed.
-        // Or use a pre-allocated buffer.
 
-        // Use stackalloc for small buffers? 4096 * 2 * 4 bytes = 32KB. A bit large for stackalloc maybe?
-        // Let's use a pooled array or just new for now (GC will handle it, it's gen0).
-        float[] tempBuffer = new float[samples];
+        // Use pre-allocated buffer if available and large enough
+        if (_audioPushBuffer == null || _audioPushBuffer.Length < samples)
+        {
+            _audioPushBuffer = new float[samples];
+        }
 
         for (int i = 0; i < samples; i++)
         {
-            tempBuffer[i] = _audioRingBuffer[_ringBufferReadPos];
+            _audioPushBuffer[i] = _audioRingBuffer[_ringBufferReadPos];
             _ringBufferReadPos = (_ringBufferReadPos + 1) % _audioRingBuffer.Length;
         }
         _ringBufferCount -= samples;
 
-        fixed (float* ptr = tempBuffer)
+        fixed (float* ptr = _audioPushBuffer)
         {
             Raylib.UpdateAudioStream(_audioStream, ptr, frames);
         }
@@ -676,30 +681,35 @@ public sealed class VideoPlayer : IDisposable
         }
     }
 
-    private unsafe void UpdateTexture()
+    private unsafe void UpdateTexture(byte[] data)
     {
-        if (_frameBuffer == null || _textureBuffer == null)
-            return;
-
         int rowBytes = Width * 4;
 
         if (_stride == rowBytes)
         {
-            Buffer.BlockCopy(_frameBuffer, 0, _textureBuffer, 0, _textureBuffer.Length);
+            // Fast path: direct copy
+            fixed (byte* ptr = data)
+            {
+                Raylib.UpdateTexture(Texture, ptr);
+            }
         }
         else
         {
+            // Slow path: repack
+            if (_textureBuffer == null)
+                return;
+
             for (int y = 0; y < Height; y++)
             {
                 int srcOffset = y * _stride;
                 int dstOffset = y * rowBytes;
-                Buffer.BlockCopy(_frameBuffer, srcOffset, _textureBuffer, dstOffset, rowBytes);
+                Buffer.BlockCopy(data, srcOffset, _textureBuffer, dstOffset, rowBytes);
             }
-        }
 
-        fixed (byte* ptr = _textureBuffer)
-        {
-            Raylib.UpdateTexture(Texture, ptr);
+            fixed (byte* ptr = _textureBuffer)
+            {
+                Raylib.UpdateTexture(Texture, ptr);
+            }
         }
     }
 
@@ -748,6 +758,35 @@ public sealed class VideoPlayer : IDisposable
     {
         Stop();
 
+        // Handle pending load task
+        if (_loadingTask != null)
+        {
+            if (_loadingTask.IsCompleted)
+            {
+                if (
+                    _loadingTask.Status == TaskStatus.RanToCompletion
+                    && _loadingTask.Result != null
+                )
+                {
+                    _loadingTask.Result.VideoFile?.Dispose();
+                    _loadingTask.Result.AudioFile?.Dispose();
+                }
+            }
+            else
+            {
+                // Task is still running. Attach continuation to dispose result when done.
+                _loadingTask.ContinueWith(t =>
+                {
+                    if (t.Status == TaskStatus.RanToCompletion && t.Result != null)
+                    {
+                        t.Result.VideoFile?.Dispose();
+                        t.Result.AudioFile?.Dispose();
+                    }
+                });
+            }
+            _loadingTask = null;
+        }
+
         _videoFile?.Dispose();
         _videoFile = null;
 
@@ -766,9 +805,10 @@ public sealed class VideoPlayer : IDisposable
             Raylib.UnloadTexture(Texture);
 
         // Clear buffers to help GC
-        _frameBuffer = null;
+        _fallbackBuffer = null;
         _textureBuffer = null;
         _audioRingBuffer = [];
+        _audioPushBuffer = null;
         _videoFrameQueue.Clear();
         _videoFramePool.Clear();
 

@@ -271,13 +271,24 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         {
             // For videos, we load first, then check duration in Update()
             _carouselCurrentItemType = CarouselItemType.Video;
+
+            // Ensure we clean up any previous image
+            if (_carouselImageLoaded)
+            {
+                Raylib.UnloadTexture(_carouselImageTexture);
+                _carouselImageLoaded = false;
+            }
+
+            // Force GC before loading new video to minimize spike
+            GC.Collect();
+
             _carouselVideoPlayer?.LoadAsync(path);
 
             // Video player handles looping internally if set, but we want to play once then next.
             if (_carouselVideoPlayer != null)
             {
                 _carouselVideoPlayer.IsLooping = false;
-                _carouselVideoPlayer.SetVolume(1.3f);
+                _carouselVideoPlayer.SetVolume(3.0f);
             }
 
             // Duck background music volume when video starts
@@ -287,6 +298,11 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         else
         {
             _carouselCurrentItemType = CarouselItemType.Image;
+
+            // Dispose video player resources if we are switching to image
+            // This frees up the video buffers while the image is shown
+            _carouselVideoPlayer?.Dispose();
+
             if (_carouselImageLoaded)
             {
                 Raylib.UnloadTexture(_carouselImageTexture);

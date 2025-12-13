@@ -169,6 +169,9 @@ internal sealed partial class EndingScene
             );
         }
 
+        // Draw overlay
+        DrawOverlay();
+
         // Draw cinematic black bars on top and bottom
         if (_config.Ending.BlackBarHeight > 0)
         {
@@ -187,6 +190,52 @@ internal sealed partial class EndingScene
                 _config.Ending.BlackBarHeight,
                 Color.Black
             );
+        }
+    }
+
+    private void DrawOverlay()
+    {
+        if (_overlayPlayer != null && Raylib.IsTextureValid(_overlayPlayer.Texture))
+        {
+            var tex = _overlayPlayer.Texture;
+            float windowAspect = (float)_config.Ending.Width / _config.Ending.Height;
+            float videoAspect = (float)tex.Width / tex.Height;
+
+            Rectangle sourceRect;
+            if (windowAspect > videoAspect)
+            {
+                // Window is wider, crop top/bottom
+                float newHeight = tex.Width / windowAspect;
+                sourceRect = new Rectangle(0, (tex.Height - newHeight) / 2, tex.Width, newHeight);
+            }
+            else
+            {
+                // Video is wider, crop left/right
+                float newWidth = tex.Height * windowAspect;
+                sourceRect = new Rectangle((tex.Width - newWidth) / 2, 0, newWidth, tex.Height);
+            }
+
+            // Apply zoom
+            if (_config.Ending.OverlayZoom != 100)
+            {
+                float zoomFactor = 100f / Math.Max(1, _config.Ending.OverlayZoom);
+                float zoomedWidth = sourceRect.Width * zoomFactor;
+                float zoomedHeight = sourceRect.Height * zoomFactor;
+
+                sourceRect = new Rectangle(
+                    sourceRect.X + (sourceRect.Width - zoomedWidth) / 2,
+                    sourceRect.Y + (sourceRect.Height - zoomedHeight) / 2,
+                    zoomedWidth,
+                    zoomedHeight
+                );
+            }
+
+            Rectangle destRect = new Rectangle(0, 0, _config.Ending.Width, _config.Ending.Height);
+
+            // #ffecbc
+            Color tint = new Color(0xff, 0xec, 0xbc, (int)(255 * _config.Ending.OverlayOpacity));
+
+            Raylib.DrawTexturePro(tex, sourceRect, destRect, Vector2.Zero, 0f, tint);
         }
     }
 
