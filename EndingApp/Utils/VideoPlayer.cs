@@ -242,6 +242,14 @@ public sealed class VideoPlayer : IDisposable
         _justLoaded = true;
     }
 
+    public void SetVolume(float volume)
+    {
+        if (_hasAudio && _audioInitialized)
+        {
+            Raylib.SetAudioStreamVolume(_audioStream, volume);
+        }
+    }
+
     public void Play()
     {
         if (State == VideoPlayerState.Playing || State == VideoPlayerState.Buffering)

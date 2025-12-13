@@ -275,10 +275,13 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
             // Video player handles looping internally if set, but we want to play once then next.
             if (_carouselVideoPlayer != null)
+            {
                 _carouselVideoPlayer.IsLooping = false;
+                _carouselVideoPlayer.SetVolume(1.3f);
+            }
 
             // Duck background music volume when video starts
-            _targetMusicVolume = 0.5f;
+            _targetMusicVolume = 0.3f;
             return true;
         }
         else
