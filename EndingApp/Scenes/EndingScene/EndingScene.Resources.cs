@@ -13,6 +13,7 @@ internal sealed partial class EndingScene
 
     private void LoadResources()
     {
+        Logger.Info("EndingScene: Loading resources...");
         // Load background image from config (use resource cache)
         _backgroundTexture = ResourceCache.LoadTexture(_config.Ending.BackgroundImage);
 

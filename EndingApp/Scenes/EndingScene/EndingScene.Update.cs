@@ -67,12 +67,6 @@ internal sealed partial class EndingScene
         if (_showStartText)
         {
             _startTextFader.Update(dt);
-            Logger.Debug(
-                "EndingScene: StartTextFader state={0} active={1} alpha={2:F3}",
-                _startTextFader.State,
-                _startTextFader.Active,
-                _startTextFader.Alpha
-            );
         }
 
         // Hide the start text when fade out finishes

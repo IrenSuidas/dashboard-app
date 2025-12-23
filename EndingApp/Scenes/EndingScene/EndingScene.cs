@@ -36,6 +36,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
 
     public void Start()
     {
+        Logger.Info("EndingScene: Starting...");
         // Reload config for hot-reloading support
         _config = AppConfig.Load();
 

@@ -11,7 +11,10 @@ internal static class CreditsReader
         var credits = new List<CreditEntry>();
 
         if (!File.Exists(filePath))
+        {
+            Logger.Warn("CreditsReader: File not found: {0}", filePath);
             return credits;
+        }
 
         string[] lines = File.ReadAllLines(filePath);
         CreditEntry? currentEntry = null;

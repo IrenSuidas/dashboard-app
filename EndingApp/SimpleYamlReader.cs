@@ -11,7 +11,10 @@ internal static class SimpleYamlReader
         var config = new Dictionary<string, string>();
 
         if (!File.Exists(filePath))
+        {
+            Logger.Warn("SimpleYamlReader: File not found: {0}", filePath);
             return config;
+        }
 
         string[] lines = File.ReadAllLines(filePath);
         string currentSection = string.Empty;

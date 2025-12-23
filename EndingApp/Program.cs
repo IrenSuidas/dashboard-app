@@ -8,6 +8,7 @@ internal static class Program
     [STAThread]
     public static void Main()
     {
+        Logger.Info("Program: Application starting...");
         // Load configuration
         var config = AppConfig.Load();
 

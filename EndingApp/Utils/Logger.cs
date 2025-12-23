@@ -28,6 +28,6 @@ internal static class Logger
     private static string GetMessage(string level, string message, object[] args)
     {
         string formatted = args?.Length > 0 ? string.Format(message, args) : message;
-        return $"{DateTime.UtcNow:O} {level}: {formatted}";
+        return $"{DateTime.Now:O} {level}: {formatted}";
     }
 }
