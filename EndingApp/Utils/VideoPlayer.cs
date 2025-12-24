@@ -62,7 +62,7 @@ public sealed class VideoPlayer : IDisposable
     private readonly object _audioLock = new();
 
     // Video Frame Buffer
-    private const int VideoBufferSize = 6; // Reduced to 6 for memory optimization
+    private const int VideoBufferSize = 3; // Reduced to 3 for memory optimization
     private readonly Queue<byte[]> _videoFrameQueue = new();
     private readonly Stack<byte[]> _videoFramePool = new();
 
@@ -140,7 +140,7 @@ public sealed class VideoPlayer : IDisposable
             var videoOptions = new MediaOptions
             {
                 StreamsToLoad = MediaMode.Video,
-                VideoPixelFormat = ImagePixelFormat.Rgba32,
+                VideoPixelFormat = ImagePixelFormat.Rgb24,
             };
             result.VideoFile = MediaFile.Open(filePath, videoOptions);
 
@@ -207,9 +207,9 @@ public sealed class VideoPlayer : IDisposable
         _frameDataSize = result.InitialFrame.Length;
 
         // Only allocate texture buffer if stride mismatch requires repacking
-        if (_stride != Width * 4)
+        if (_stride != Width * 3)
         {
-            _textureBuffer = new byte[Width * Height * 4];
+            _textureBuffer = new byte[Width * Height * 3];
         }
 
         _hasAudio = result.HasAudio;
@@ -221,7 +221,7 @@ public sealed class VideoPlayer : IDisposable
 
         // Setup Texture (Main Thread)
         var image = Raylib.GenImageColor(Width, Height, Color.Black);
-        Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8A8);
+        Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8);
         Texture = Raylib.LoadTextureFromImage(image);
         Raylib.UnloadImage(image);
         Raylib.SetTextureFilter(Texture, TextureFilter.Bilinear);
@@ -786,7 +786,7 @@ public sealed class VideoPlayer : IDisposable
 
     private unsafe void UpdateTexture(byte[] data)
     {
-        int rowBytes = Width * 4;
+        int rowBytes = Width * 3;
 
         if (_stride == rowBytes)
         {
