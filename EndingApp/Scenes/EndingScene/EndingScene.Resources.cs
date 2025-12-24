@@ -70,8 +70,9 @@ internal sealed partial class EndingScene
             && File.Exists(_config.Ending.OverlayPath)
         )
         {
-            _overlayPlayer = new VideoPlayer { IsLooping = true };
-            _overlayPlayer.LoadAsync(_config.Ending.OverlayPath);
+            _overlayPlayer = new GifPlayer { };
+            _overlayPlayer.SetLooping(true);
+            _overlayPlayer.Load(_config.Ending.OverlayPath);
         }
     }
 

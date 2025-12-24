@@ -46,7 +46,7 @@ internal sealed partial class EndingScene
     private float _copyrightAlpha;
 
     // Overlay state
-    private VideoPlayer? _overlayPlayer;
+    private GifPlayer? _overlayPlayer;
 
     // Carousel state
     private readonly List<CarouselItem> _carouselItems = [];

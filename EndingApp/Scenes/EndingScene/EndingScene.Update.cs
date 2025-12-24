@@ -42,10 +42,6 @@ internal sealed partial class EndingScene
         if (_overlayPlayer != null)
         {
             _overlayPlayer.Update();
-            if (_overlayPlayer.State == VideoPlayerState.Stopped)
-            {
-                _overlayPlayer.Play();
-            }
         }
 
         float startDelay = _config.Ending.StartDelay;

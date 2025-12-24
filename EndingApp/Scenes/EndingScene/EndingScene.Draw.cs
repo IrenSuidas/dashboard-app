@@ -14,7 +14,7 @@ internal sealed partial class EndingScene
         Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, Color.Black);
 
         // Draw background image first (we overlay a solid rectangle later to fade to plain color)
-        if (_backgroundTexture.Id != 0)
+        if (_backgroundTexture.Id != 0 && _endBackgroundFader.Alpha < 1.0f)
         {
             Raylib.DrawTexturePro(
                 _backgroundTexture,
@@ -25,7 +25,7 @@ internal sealed partial class EndingScene
                 Color.White
             );
         }
-        else
+        else if (_endBackgroundFader.Alpha < 1.0f)
         {
             Raylib.DrawRectangle(0, 0, _config.Ending.Width, _config.Ending.Height, Color.Black);
         }
@@ -90,7 +90,7 @@ internal sealed partial class EndingScene
 
             // Compute total height for the text block
             float totalHeight = 0f;
-            List<float> lineHeights = new List<float>();
+            List<float> lineHeights = new();
             foreach (string? line in lines)
             {
                 var size = _fontLoader.MeasureText(
@@ -230,12 +230,15 @@ internal sealed partial class EndingScene
                 );
             }
 
-            Rectangle destRect = new Rectangle(0, 0, _config.Ending.Width, _config.Ending.Height);
+            Rectangle destRect = new(0, 0, _config.Ending.Width, _config.Ending.Height);
 
             // #ffecbc
-            Color tint = new Color(0xff, 0xec, 0xbc, (int)(255 * _config.Ending.OverlayOpacity));
+            Color tint = new(0xff, 0xec, 0xbc, (int)(255 * _config.Ending.OverlayOpacity));
 
-            Raylib.DrawTexturePro(tex, sourceRect, destRect, Vector2.Zero, 0f, tint);
+            if (tint.A > 0)
+            {
+                Raylib.DrawTexturePro(tex, sourceRect, destRect, Vector2.Zero, 0f, tint);
+            }
         }
     }
 
@@ -277,7 +280,7 @@ internal sealed partial class EndingScene
             );
             int drawWidth = (int)(drawHeight * (16f / 9f));
 
-            Rectangle destRect = new Rectangle(
+            Rectangle destRect = new(
                 centerX - drawWidth / 2,
                 centerY - drawHeight / 2,
                 drawWidth,
