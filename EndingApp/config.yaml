@@ -1,6 +1,10 @@
 # EndingApp Configuration File
 # This file configures the appearance and behavior of the ending scene
 
+api:
+  endpointUrl: "http://localhost:3001"
+  apiKey: "your-api-key-here"
+
 ending:
   # Background image for the ending scene
   background: assets/images/bg.png

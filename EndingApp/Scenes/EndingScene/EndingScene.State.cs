@@ -49,7 +49,7 @@ internal sealed partial class EndingScene
     private VideoPlayer? _overlayPlayer;
 
     // Carousel state
-    private List<CarouselItem> _carouselItems = [];
+    private readonly List<CarouselItem> _carouselItems = [];
     private int _carouselIndex = -1;
     private CarouselState _carouselState = CarouselState.Hidden;
     private Fader _carouselFader;

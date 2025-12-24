@@ -1,3 +1,4 @@
+using EndingApp.Scenes.SongRequest;
 using EndingApp.Scenes.TestingScene;
 using Raylib_cs;
 
@@ -9,11 +10,13 @@ internal static class Program
     public static void Main()
     {
         Logger.Info("Program: Application starting...");
+        CleanupRequestedFolder();
+
         // Load configuration
         var config = AppConfig.Load();
 
         const int screenWidth = 400;
-        const int screenHeight = 200;
+        const int screenHeight = 250;
 
         // Raylib.SetConfigFlags(ConfigFlags.UndecoratedWindow | ConfigFlags.TransparentWindow);
         Raylib.InitWindow(screenWidth, screenHeight, "EndingApp");
@@ -23,9 +26,11 @@ internal static class Program
         Rectangle endingButton = new(20, 70, 110, 60);
         Rectangle clipButton = new(145, 70, 110, 60);
         Rectangle testingButton = new(270, 70, 110, 60);
+        Rectangle songRequestButton = new(20, 140, 110, 40);
 
         EndingScene? endingScene = null;
         TestingScene? testingScene = null;
+        SongRequestScene? songRequestScene = null;
 
         while (!Raylib.WindowShouldClose())
         {
@@ -65,12 +70,28 @@ internal static class Program
                     testingScene = null;
                 }
             }
+            else if (songRequestScene?.IsActive == true)
+            {
+                songRequestScene.Update();
+                if (songRequestScene != null && !songRequestScene.IsActive)
+                {
+                    Logger.Info(
+                        "Program: SongRequestScene is no longer active; performing cleanup."
+                    );
+                    songRequestScene.Cleanup();
+                    songRequestScene = null;
+                }
+            }
             else
             {
                 var mousePos = Raylib.GetMousePosition();
                 bool endingHovered = Raylib.CheckCollisionPointRec(mousePos, endingButton);
                 bool clipHovered = Raylib.CheckCollisionPointRec(mousePos, clipButton);
                 bool testingHovered = Raylib.CheckCollisionPointRec(mousePos, testingButton);
+                bool songRequestHovered = Raylib.CheckCollisionPointRec(
+                    mousePos,
+                    songRequestButton
+                );
 
                 // Handle button clicks
                 if (Raylib.IsMouseButtonPressed(MouseButton.Left))
@@ -103,6 +124,12 @@ internal static class Program
                         testingScene = new TestingScene();
                         testingScene.Start();
                     }
+                    else if (songRequestHovered)
+                    {
+                        Logger.Info("Program: Starting SongRequestScene");
+                        songRequestScene ??= new SongRequestScene(config);
+                        songRequestScene.Start();
+                    }
                 }
             }
 
@@ -117,6 +144,10 @@ internal static class Program
             else if (testingScene?.IsActive == true)
             {
                 testingScene.Draw();
+            }
+            else if (songRequestScene?.IsActive == true)
+            {
+                songRequestScene.Draw();
             }
             else
             {
@@ -193,6 +224,33 @@ internal static class Program
                     20,
                     Color.White
                 );
+
+                // Draw "Song Request" button
+                var songRequestColor = Raylib.CheckCollisionPointRec(
+                    Raylib.GetMousePosition(),
+                    songRequestButton
+                )
+                    ? new Color(100, 100, 100, 200)
+                    : new Color(60, 60, 60, 180);
+                Raylib.DrawRectangleRounded(songRequestButton, 0.3f, 8, songRequestColor);
+                Raylib.DrawRectangleRoundedLines(
+                    songRequestButton,
+                    0.3f,
+                    8,
+                    new Color(200, 200, 200, 255)
+                );
+
+                string songRequestText = "Song Req";
+                int songRequestTextWidth = Raylib.MeasureText(songRequestText, 20);
+                Raylib.DrawText(
+                    songRequestText,
+                    (int)(
+                        songRequestButton.X + (songRequestButton.Width - songRequestTextWidth) / 2
+                    ),
+                    (int)(songRequestButton.Y + 10),
+                    20,
+                    Color.White
+                );
             }
 
             Raylib.EndDrawing();
@@ -201,5 +259,29 @@ internal static class Program
         endingScene?.Cleanup();
         testingScene?.Cleanup();
         Raylib.CloseWindow();
+    }
+
+    private static void CleanupRequestedFolder()
+    {
+        try
+        {
+            string tempPath = Path.Combine(AppContext.BaseDirectory, "temp");
+            string requestedPath = Path.Combine(tempPath, "requested");
+
+            if (Directory.Exists(requestedPath))
+            {
+                Logger.Info($"Program: Cleaning up {requestedPath}");
+                // Delete all files in the directory
+                string[] files = Directory.GetFiles(requestedPath);
+                foreach (string file in files)
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Program: Failed to cleanup requested folder: {ex.Message}");
+        }
     }
 }

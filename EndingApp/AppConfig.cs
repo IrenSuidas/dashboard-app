@@ -13,11 +13,16 @@ public enum FontWeight
 internal sealed class AppConfig
 {
     public EndingConfig Ending { get; set; } = new();
+    public ApiConfig Api { get; set; } = new();
 
     public static AppConfig Load(string configPath = "config.yaml")
     {
         var config = new AppConfig();
         var data = SimpleYamlReader.Read(configPath);
+
+        // Load api configuration
+        config.Api.EndpointUrl = data.GetString("api.endpointUrl", "");
+        config.Api.ApiKey = data.GetString("api.apiKey", "");
 
         // Load ending configuration
         config.Ending.BackgroundImage = data.GetString("ending.background", "assets/images/bg.png");
@@ -245,4 +250,10 @@ internal sealed class EndingConfig
     public string OverlayPath { get; set; } = "";
     public float OverlayOpacity { get; set; } = 0.2f;
     public int OverlayZoom { get; set; } = 100;
+}
+
+internal sealed class ApiConfig
+{
+    public string EndpointUrl { get; set; } = "";
+    public string ApiKey { get; set; } = "";
 }
