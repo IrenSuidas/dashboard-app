@@ -37,7 +37,6 @@ public sealed class VideoPlayer : IDisposable
     private MediaFile? _videoFile;
     private MediaFile? _audioFile;
     private int _frameDataSize; // Size of one frame in bytes
-    private byte[]? _fallbackBuffer; // Used for direct decoding if queue is empty
     private byte[]? _textureBuffer; // Used only if stride mismatch
     private float[]? _audioPushBuffer; // Reused buffer for pushing audio
     private int _stride;
@@ -63,7 +62,7 @@ public sealed class VideoPlayer : IDisposable
     private readonly object _audioLock = new();
 
     // Video Frame Buffer
-    private const int VideoBufferSize = 10; // Reduced to 10 for memory optimization
+    private const int VideoBufferSize = 6; // Reduced to 6 for memory optimization
     private readonly Queue<byte[]> _videoFrameQueue = new();
     private readonly Stack<byte[]> _videoFramePool = new();
 
@@ -206,7 +205,6 @@ public sealed class VideoPlayer : IDisposable
         _frameInterval = 1.0 / FrameRate;
         _stride = result.Stride;
         _frameDataSize = result.InitialFrame.Length;
-        _fallbackBuffer = new byte[_frameDataSize];
 
         // Only allocate texture buffer if stride mismatch requires repacking
         if (_stride != Width * 4)
@@ -910,7 +908,6 @@ public sealed class VideoPlayer : IDisposable
             Raylib.UnloadTexture(Texture);
 
         // Clear buffers to help GC
-        _fallbackBuffer = null;
         _textureBuffer = null;
         _audioRingBuffer = [];
         _audioPushBuffer = null;
