@@ -58,11 +58,12 @@ public sealed class VideoPlayer : IDisposable
     private int _ringBufferWritePos;
     private int _ringBufferReadPos;
     private int _ringBufferCount;
-    private const int RingBufferSize = 4096 * 16; // Enough for ~1.5s of audio
+    private const int RingBufferSize = 4096 * 8; // Reduced to ~0.7s for memory optimization
     private const int AudioChunkSize = 4096; // Size to push to Raylib
+    private readonly object _audioLock = new();
 
     // Video Frame Buffer
-    private const int VideoBufferSize = 5; // Reduced from 15 to 5 to save memory
+    private const int VideoBufferSize = 10; // Reduced to 10 for memory optimization
     private readonly Queue<byte[]> _videoFrameQueue = new();
     private readonly Stack<byte[]> _videoFramePool = new();
 
@@ -70,6 +71,9 @@ public sealed class VideoPlayer : IDisposable
     private static bool s_ffmpegInitialized;
     private Task? _bufferingTask;
     private CancellationTokenSource? _bufferingCts;
+    private Task? _decodingTask;
+    private CancellationTokenSource? _decodingCts;
+    private volatile bool _isVideoFinished;
 
     private Task<LoadResult?>? _loadingTask;
 
@@ -241,7 +245,7 @@ public sealed class VideoPlayer : IDisposable
                     );
                     _audioInitialized = true;
                     _audioRingBuffer = new float[RingBufferSize * _audioChannels];
-                    _audioPushBuffer = new float[4096 * _audioChannels]; // Pre-allocate push buffer
+                    _audioPushBuffer = new float[AudioChunkSize * _audioChannels]; // Pre-allocate push buffer
                 }
             }
         }
@@ -281,6 +285,103 @@ public sealed class VideoPlayer : IDisposable
             if (_hasAudio)
                 Raylib.ResumeAudioStream(_audioStream);
             State = VideoPlayerState.Playing;
+            StartDecodingWorker();
+        }
+    }
+
+    private void StartDecodingWorker()
+    {
+        _decodingCts?.Cancel();
+        _decodingCts = new CancellationTokenSource();
+        var token = _decodingCts.Token;
+        _decodingTask = Task.Run(() => DecodingLoop(token), token);
+    }
+
+    private void DecodingLoop(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                bool didWork = false;
+
+                // 1. Decode Video
+                if (_videoFile != null && !_isVideoFinished)
+                {
+                    int queueCount;
+                    lock (_videoFrameQueue)
+                    {
+                        queueCount = _videoFrameQueue.Count;
+                    }
+
+                    if (queueCount < VideoBufferSize)
+                    {
+                        // Get buffer from pool or create new
+                        byte[] buffer;
+                        lock (_videoFramePool)
+                        {
+                            if (_videoFramePool.Count > 0)
+                                buffer = _videoFramePool.Pop();
+                            else
+                                buffer = new byte[_frameDataSize];
+                        }
+
+                        if (_videoFile.Video.TryGetNextFrame(buffer.AsSpan()))
+                        {
+                            lock (_videoFrameQueue)
+                            {
+                                _videoFrameQueue.Enqueue(buffer);
+                            }
+                            didWork = true;
+                        }
+                        else
+                        {
+                            // End of stream, push back unused buffer
+                            lock (_videoFramePool)
+                            {
+                                _videoFramePool.Push(buffer);
+                            }
+
+                            _isVideoFinished = true;
+                        }
+                    }
+                }
+
+                // 2. Decode Audio
+                if (_hasAudio && _audioFile != null)
+                {
+                    // Fill Ring Buffer
+                    bool shouldRead = false;
+                    lock (_audioLock)
+                    {
+                        if (_ringBufferCount < _audioRingBuffer.Length - 8192)
+                        {
+                            shouldRead = true;
+                        }
+                    }
+
+                    if (shouldRead)
+                    {
+                        if (_audioFile.Audio.TryGetNextFrame(out var audioData))
+                        {
+                            using (audioData)
+                            {
+                                WriteToRingBuffer(audioData);
+                            }
+                            didWork = true;
+                        }
+                    }
+                }
+
+                if (!didWork)
+                {
+                    Thread.Sleep(1);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"VideoPlayer: Decoding loop failed: {ex.Message}");
         }
     }
 
@@ -288,6 +389,8 @@ public sealed class VideoPlayer : IDisposable
     {
         try
         {
+            _isVideoFinished = false;
+
             if (!_justLoaded)
             {
                 // Reset Video
@@ -338,17 +441,23 @@ public sealed class VideoPlayer : IDisposable
                 {
                     // We can't easily reset audio stream here without main thread
                     // But we can clear the ring buffer
-                    _ringBufferReadPos = 0;
-                    _ringBufferWritePos = 0;
-                    _ringBufferCount = 0;
+                    lock (_audioLock)
+                    {
+                        _ringBufferReadPos = 0;
+                        _ringBufferWritePos = 0;
+                        _ringBufferCount = 0;
+                    }
                 }
             }
             else
             {
                 // Just loaded, ensure ring buffer is clear
-                _ringBufferReadPos = 0;
-                _ringBufferWritePos = 0;
-                _ringBufferCount = 0;
+                lock (_audioLock)
+                {
+                    _ringBufferReadPos = 0;
+                    _ringBufferWritePos = 0;
+                    _ringBufferCount = 0;
+                }
 
                 // Also ensure video buffer is filled if we just loaded
                 if (_videoFile != null)
@@ -402,10 +511,20 @@ public sealed class VideoPlayer : IDisposable
             if (_hasAudio && _audioInitialized && _audioFile != null)
             {
                 // Fill buffer up to 75% before starting
-                while (_ringBufferCount < _audioRingBuffer.Length * 3 / 4)
+                while (true)
                 {
                     if (token.IsCancellationRequested)
                         return;
+
+                    bool isFull;
+                    lock (_audioLock)
+                    {
+                        isFull = _ringBufferCount >= _audioRingBuffer.Length * 3 / 4;
+                    }
+
+                    if (isFull)
+                        break;
+
                     if (_audioFile.Audio.TryGetNextFrame(out var audioData))
                     {
                         using (audioData)
@@ -431,6 +550,17 @@ public sealed class VideoPlayer : IDisposable
         if (State != VideoPlayerState.Playing)
             return;
 
+        _decodingCts?.Cancel();
+        if (_decodingTask != null)
+        {
+            try
+            {
+                _decodingTask.Wait();
+            }
+            catch (AggregateException) { }
+            _decodingTask = null;
+        }
+
         if (_hasAudio)
             Raylib.PauseAudioStream(_audioStream);
         State = VideoPlayerState.Paused;
@@ -438,6 +568,17 @@ public sealed class VideoPlayer : IDisposable
 
     public void Stop()
     {
+        _decodingCts?.Cancel();
+        if (_decodingTask != null)
+        {
+            try
+            {
+                _decodingTask.Wait();
+            }
+            catch (AggregateException) { }
+            _decodingTask = null;
+        }
+
         if (_hasAudio)
             Raylib.StopAudioStream(_audioStream);
         State = VideoPlayerState.Stopped;
@@ -483,13 +624,22 @@ public sealed class VideoPlayer : IDisposable
                     int samplesToPush = framesToPush * _audioChannels;
 
                     // Push first chunk
-                    if (_ringBufferCount >= samplesToPush)
+                    bool hasEnough;
+                    lock (_audioLock)
+                    {
+                        hasEnough = _ringBufferCount >= samplesToPush;
+                    }
+                    if (hasEnough)
                     {
                         ReadFromRingBufferAndPush(framesToPush);
                     }
 
                     // Push second chunk if available
-                    if (_ringBufferCount >= samplesToPush)
+                    lock (_audioLock)
+                    {
+                        hasEnough = _ringBufferCount >= samplesToPush;
+                    }
+                    if (hasEnough)
                     {
                         ReadFromRingBufferAndPush(framesToPush);
                     }
@@ -500,6 +650,7 @@ public sealed class VideoPlayer : IDisposable
                 _justLoaded = false;
                 _startTime = Raylib.GetTime();
                 State = VideoPlayerState.Playing;
+                StartDecodingWorker();
             }
             return;
         }
@@ -511,34 +662,23 @@ public sealed class VideoPlayer : IDisposable
         _masterClock = Raylib.GetTime() - _startTime;
 
         // 1. Handle Audio
-        if (_hasAudio && _audioInitialized && _audioFile != null)
+        if (_hasAudio && _audioInitialized)
         {
-            // Fill Ring Buffer from File
-            // We want to keep the ring buffer reasonably full, but not overflow
-            while (_ringBufferCount < _audioRingBuffer.Length - 8192) // Leave some space
-            {
-                if (_audioFile.Audio.TryGetNextFrame(out var audioData))
-                {
-                    using (audioData)
-                    {
-                        WriteToRingBuffer(audioData);
-                    }
-                }
-                else
-                {
-                    break; // End of audio stream
-                }
-            }
-
             // Feed Raylib from Ring Buffer
             if (Raylib.IsAudioStreamProcessed(_audioStream))
             {
                 // Push a chunk if we have enough data
                 // Raylib buffer is 4096 frames. We push 4096 frames (samples * channels)
-                int framesToPush = 4096;
+                int framesToPush = AudioChunkSize;
                 int samplesToPush = framesToPush * _audioChannels;
 
-                if (_ringBufferCount >= samplesToPush)
+                bool hasEnough;
+                lock (_audioLock)
+                {
+                    hasEnough = _ringBufferCount >= samplesToPush;
+                }
+
+                if (hasEnough)
                 {
                     ReadFromRingBufferAndPush(framesToPush);
                 }
@@ -566,56 +706,15 @@ public sealed class VideoPlayer : IDisposable
                     _nextFrameTime += _frameInterval;
 
                     // Return buffer to pool
-                    _videoFramePool.Push(buffer);
-                }
-                else
-                {
-                    // Fallback if queue empty (shouldn't happen if we keep up)
-                    if (_videoFile.Video.TryGetNextFrame(_fallbackBuffer.AsSpan()))
+                    lock (_videoFramePool)
                     {
-                        UpdateTexture(_fallbackBuffer!);
-                        _nextFrameTime += _frameInterval;
-                    }
-                    else
-                    {
-                        HandlePlaybackComplete();
-                    }
-                }
-            }
-        }
-
-        // Refill video buffer
-        if (_videoFile != null)
-        {
-            int queueCount;
-            lock (_videoFrameQueue)
-            {
-                queueCount = _videoFrameQueue.Count;
-            }
-
-            if (queueCount < VideoBufferSize)
-            {
-                // Get buffer from pool or create new
-                byte[] buffer;
-                if (_videoFramePool.Count > 0)
-                    buffer = _videoFramePool.Pop();
-                else
-                    buffer = new byte[_frameDataSize];
-
-                if (_videoFile.Video.TryGetNextFrame(buffer.AsSpan()))
-                {
-                    lock (_videoFrameQueue)
-                    {
-                        _videoFrameQueue.Enqueue(buffer);
+                        _videoFramePool.Push(buffer);
                     }
                 }
                 else
                 {
-                    // End of stream, push back unused buffer
-                    _videoFramePool.Push(buffer);
-
-                    // If queue is also empty, we are done
-                    if (queueCount == 0)
+                    // Queue empty
+                    if (_isVideoFinished)
                     {
                         HandlePlaybackComplete();
                     }
@@ -632,14 +731,17 @@ public sealed class VideoPlayer : IDisposable
             return;
         int samplesPerChannel = sampleData[0].Length;
 
-        // Interleave and write
-        for (int i = 0; i < samplesPerChannel; i++)
+        lock (_audioLock)
         {
-            for (int c = 0; c < channels; c++)
+            // Interleave and write
+            for (int i = 0; i < samplesPerChannel; i++)
             {
-                _audioRingBuffer[_ringBufferWritePos] = sampleData[c][i];
-                _ringBufferWritePos = (_ringBufferWritePos + 1) % _audioRingBuffer.Length;
-                _ringBufferCount++;
+                for (int c = 0; c < channels; c++)
+                {
+                    _audioRingBuffer[_ringBufferWritePos] = sampleData[c][i];
+                    _ringBufferWritePos = (_ringBufferWritePos + 1) % _audioRingBuffer.Length;
+                    _ringBufferCount++;
+                }
             }
         }
     }
@@ -654,12 +756,15 @@ public sealed class VideoPlayer : IDisposable
             _audioPushBuffer = new float[samples];
         }
 
-        for (int i = 0; i < samples; i++)
+        lock (_audioLock)
         {
-            _audioPushBuffer[i] = _audioRingBuffer[_ringBufferReadPos];
-            _ringBufferReadPos = (_ringBufferReadPos + 1) % _audioRingBuffer.Length;
+            for (int i = 0; i < samples; i++)
+            {
+                _audioPushBuffer[i] = _audioRingBuffer[_ringBufferReadPos];
+                _ringBufferReadPos = (_ringBufferReadPos + 1) % _audioRingBuffer.Length;
+            }
+            _ringBufferCount -= samples;
         }
-        _ringBufferCount -= samples;
 
         fixed (float* ptr = _audioPushBuffer)
         {
