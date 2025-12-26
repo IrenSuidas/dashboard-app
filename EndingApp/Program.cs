@@ -1,5 +1,4 @@
 using EndingApp.Scenes.SongRequest;
-using EndingApp.Scenes.TestingScene;
 using Raylib_cs;
 
 namespace EndingApp;
@@ -16,7 +15,7 @@ internal static class Program
         var config = AppConfig.Load();
 
         const int screenWidth = 400;
-        const int screenHeight = 250;
+        const int screenHeight = 200;
 
         // Raylib.SetConfigFlags(ConfigFlags.UndecoratedWindow | ConfigFlags.TransparentWindow);
         Raylib.InitWindow(screenWidth, screenHeight, "EndingApp");
@@ -25,11 +24,9 @@ internal static class Program
 
         Rectangle endingButton = new(20, 70, 110, 60);
         Rectangle clipButton = new(145, 70, 110, 60);
-        Rectangle testingButton = new(270, 70, 110, 60);
-        Rectangle songRequestButton = new(20, 140, 110, 40);
+        Rectangle songRequestButton = new(270, 70, 110, 60);
 
         EndingScene? endingScene = null;
-        TestingScene? testingScene = null;
         SongRequestScene? songRequestScene = null;
 
         while (!Raylib.WindowShouldClose())
@@ -56,20 +53,6 @@ internal static class Program
                     endingScene = null;
                 }
             }
-            else if (testingScene?.IsActive == true)
-            {
-                testingScene.Update();
-                // If the scene requested returning to main menu, perform cleanup here and clear the reference.
-                if (testingScene != null && !testingScene.IsActive)
-                {
-                    Logger.Info(
-                        "Program: TestingScene is no longer active; performing cleanup and releasing reference."
-                    );
-                    // Cleanup resources
-                    testingScene.Cleanup();
-                    testingScene = null;
-                }
-            }
             else if (songRequestScene?.IsActive == true)
             {
                 songRequestScene.Update();
@@ -87,7 +70,6 @@ internal static class Program
                 var mousePos = Raylib.GetMousePosition();
                 bool endingHovered = Raylib.CheckCollisionPointRec(mousePos, endingButton);
                 bool clipHovered = Raylib.CheckCollisionPointRec(mousePos, clipButton);
-                bool testingHovered = Raylib.CheckCollisionPointRec(mousePos, testingButton);
                 bool songRequestHovered = Raylib.CheckCollisionPointRec(
                     mousePos,
                     songRequestButton
@@ -118,12 +100,6 @@ internal static class Program
                     {
                         // TODO: Handle Clip button click
                     }
-                    else if (testingHovered)
-                    {
-                        Logger.Info("Program: Starting TestingScene");
-                        testingScene = new TestingScene();
-                        testingScene.Start();
-                    }
                     else if (songRequestHovered)
                     {
                         Logger.Info("Program: Starting SongRequestScene");
@@ -140,10 +116,6 @@ internal static class Program
             {
                 Raylib.ClearBackground(Color.Black);
                 endingScene.Draw();
-            }
-            else if (testingScene?.IsActive == true)
-            {
-                testingScene.Draw();
             }
             else if (songRequestScene?.IsActive == true)
             {
@@ -200,31 +172,6 @@ internal static class Program
                     Color.White
                 );
 
-                // Draw "Testing" button
-                var testingColor = Raylib.CheckCollisionPointRec(
-                    Raylib.GetMousePosition(),
-                    testingButton
-                )
-                    ? new Color(100, 100, 100, 200)
-                    : new Color(60, 60, 60, 180);
-                Raylib.DrawRectangleRounded(testingButton, 0.3f, 8, testingColor);
-                Raylib.DrawRectangleRoundedLines(
-                    testingButton,
-                    0.3f,
-                    8,
-                    new Color(200, 200, 200, 255)
-                );
-
-                string testingText = "Testing";
-                int testingTextWidth = Raylib.MeasureText(testingText, 20);
-                Raylib.DrawText(
-                    testingText,
-                    (int)(testingButton.X + (testingButton.Width - testingTextWidth) / 2),
-                    (int)(testingButton.Y + 20),
-                    20,
-                    Color.White
-                );
-
                 // Draw "Song Request" button
                 var songRequestColor = Raylib.CheckCollisionPointRec(
                     Raylib.GetMousePosition(),
@@ -247,7 +194,7 @@ internal static class Program
                     (int)(
                         songRequestButton.X + (songRequestButton.Width - songRequestTextWidth) / 2
                     ),
-                    (int)(songRequestButton.Y + 10),
+                    (int)(songRequestButton.Y + 20),
                     20,
                     Color.White
                 );
@@ -257,7 +204,6 @@ internal static class Program
         }
 
         endingScene?.Cleanup();
-        testingScene?.Cleanup();
         Raylib.CloseWindow();
     }
 
