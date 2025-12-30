@@ -18,9 +18,14 @@ internal static class Program
         const int screenHeight = 200;
 
         // Raylib.SetConfigFlags(ConfigFlags.UndecoratedWindow | ConfigFlags.TransparentWindow);
+        Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow);
         Raylib.InitWindow(screenWidth, screenHeight, "EndingApp");
         Raylib.SetWindowState(ConfigFlags.VSyncHint);
         Raylib.SetTargetFPS(60);
+
+        var icon = Raylib.LoadImage("assets/icon.png");
+        Raylib.SetWindowIcon(icon);
+        Raylib.UnloadImage(icon);
 
         Rectangle endingButton = new(20, 70, 110, 60);
         Rectangle clipButton = new(145, 70, 110, 60);
