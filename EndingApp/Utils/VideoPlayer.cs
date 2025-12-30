@@ -57,7 +57,7 @@ public sealed class VideoPlayer : IDisposable
     private int _ringBufferWritePos;
     private int _ringBufferReadPos;
     private int _ringBufferCount;
-    private const int RingBufferSize = 4096 * 8; // Reduced to ~0.7s for memory optimization
+    private const int RingBufferSize = 4096 * 16; // Increased to ~1.4s
     private const int AudioChunkSize = 4096; // Size to push to Raylib
     private readonly object _audioLock = new();
 
@@ -405,10 +405,12 @@ public sealed class VideoPlayer : IDisposable
                     // First frame immediately
                     if (token.IsCancellationRequested)
                         return;
-                    using var frame = _videoFile.Video.GetFrame(TimeSpan.Zero);
-                    // We can't update texture here, so just put it in buffer
-                    // Actually, we need to handle the first frame specially in Update
-                    // For now, let's just fill the queue.
+
+                    // If we just loaded (and haven't played yet), the first frame is already loaded into the texture.
+                    // But if we stopped and are restarting, or looping, we need to seek.
+
+                    // Fallback to GetFrame(0) to reset position
+                    using (var frame = _videoFile.Video.GetFrame(TimeSpan.Zero)) { }
 
                     // Decode subsequent frames into buffer
                     for (int i = 0; i < VideoBufferSize; i++)
@@ -508,7 +510,7 @@ public sealed class VideoPlayer : IDisposable
             // Pre-buffer audio to avoid initial stutter
             if (_hasAudio && _audioInitialized && _audioFile != null)
             {
-                // Fill buffer up to 75% before starting
+                // Fill buffer up to 50% before starting
                 while (true)
                 {
                     if (token.IsCancellationRequested)
@@ -517,7 +519,7 @@ public sealed class VideoPlayer : IDisposable
                     bool isFull;
                     lock (_audioLock)
                     {
-                        isFull = _ringBufferCount >= _audioRingBuffer.Length * 3 / 4;
+                        isFull = _ringBufferCount >= _audioRingBuffer.Length * 1 / 2;
                     }
 
                     if (isFull)
@@ -623,16 +625,6 @@ public sealed class VideoPlayer : IDisposable
 
                     // Push first chunk
                     bool hasEnough;
-                    lock (_audioLock)
-                    {
-                        hasEnough = _ringBufferCount >= samplesToPush;
-                    }
-                    if (hasEnough)
-                    {
-                        ReadFromRingBufferAndPush(framesToPush);
-                    }
-
-                    // Push second chunk if available
                     lock (_audioLock)
                     {
                         hasEnough = _ringBufferCount >= samplesToPush;
