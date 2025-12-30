@@ -464,12 +464,15 @@ internal sealed class FontLoader : IDisposable
     /// <param name="spacing">Character spacing.</param>
     /// <returns>The size of the text.</returns>
     public Vector2 MeasureText(
-        string text,
+        string? text,
         float fontSize,
         float spacing,
         FontWeight weight = FontWeight.Regular
     )
     {
+        if (string.IsNullOrEmpty(text))
+            return Vector2.Zero;
+
         float width = 0;
         float height = fontSize;
 
@@ -503,7 +506,7 @@ internal sealed class FontLoader : IDisposable
     /// <param name="spacing">Character spacing.</param>
     /// <param name="color">Text color.</param>
     public unsafe void DrawText(
-        string text,
+        string? text,
         Vector2 position,
         float fontSize,
         float spacing,
@@ -511,6 +514,8 @@ internal sealed class FontLoader : IDisposable
         FontWeight weight = FontWeight.Regular
     )
     {
+        if (string.IsNullOrEmpty(text))
+            return;
         float xOffset = 0;
         // NOTE: primary/font variants can have different BaseSize; compute per glyph
 
@@ -557,7 +562,7 @@ internal sealed class FontLoader : IDisposable
     /// <param name="spacing">Character spacing.</param>
     /// <param name="color">Text color.</param>
     public void DrawTextCentered(
-        string text,
+        string? text,
         float centerX,
         float y,
         float fontSize,
@@ -566,6 +571,8 @@ internal sealed class FontLoader : IDisposable
         FontWeight weight = FontWeight.Regular
     )
     {
+        if (string.IsNullOrEmpty(text))
+            return;
         var size = MeasureText(text, fontSize, spacing, weight);
         DrawText(text, new Vector2(centerX - size.X / 2, y), fontSize, spacing, color, weight);
     }
@@ -580,7 +587,7 @@ internal sealed class FontLoader : IDisposable
     /// <param name="spacing">Character spacing.</param>
     /// <param name="color">Text color.</param>
     public void DrawTextRightAligned(
-        string text,
+        string? text,
         float rightX,
         float y,
         float fontSize,
@@ -589,6 +596,8 @@ internal sealed class FontLoader : IDisposable
         FontWeight weight = FontWeight.Regular
     )
     {
+        if (string.IsNullOrEmpty(text))
+            return;
         var size = MeasureText(text, fontSize, spacing, weight);
         DrawText(text, new Vector2(rightX - size.X, y), fontSize, spacing, color, weight);
     }

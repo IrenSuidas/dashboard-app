@@ -185,6 +185,77 @@ internal static class AudioService
             return 0f;
         }
     }
+
+    public static void Seek(Music music, float position)
+    {
+        if (!IsAudioDeviceReady || music.IsNull())
+            return;
+        try
+        {
+            Raylib.SeekMusicStream(music, position);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: Seek failed: {0}", ex.Message);
+        }
+    }
+
+    public static void Pause(Music music)
+    {
+        if (!IsAudioDeviceReady || music.IsNull())
+            return;
+        try
+        {
+            Raylib.PauseMusicStream(music);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: Pause failed: {0}", ex.Message);
+        }
+    }
+
+    public static void Resume(Music music)
+    {
+        if (!IsAudioDeviceReady || music.IsNull())
+            return;
+        try
+        {
+            Raylib.ResumeMusicStream(music);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: Resume failed: {0}", ex.Message);
+        }
+    }
+
+    public static Music Load(string fileName)
+    {
+        if (!IsAudioDeviceReady)
+            return default;
+        try
+        {
+            return Raylib.LoadMusicStream(fileName);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: Load failed: {0}", ex.Message);
+            return default;
+        }
+    }
+
+    public static void Unload(Music music)
+    {
+        if (!IsAudioDeviceReady || music.IsNull())
+            return;
+        try
+        {
+            Raylib.UnloadMusicStream(music);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("AudioService: Unload failed: {0}", ex.Message);
+        }
+    }
 }
 
 internal static class MusicExtensions
