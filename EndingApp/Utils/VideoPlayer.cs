@@ -260,6 +260,88 @@ public sealed class VideoPlayer : IDisposable
         }
     }
 
+    public void Seek(TimeSpan time)
+    {
+        if (State == VideoPlayerState.Loading)
+            return;
+
+        bool wasPlaying = State == VideoPlayerState.Playing;
+
+        // Stop decoding
+        _decodingCts?.Cancel();
+        if (_decodingTask != null)
+        {
+            try
+            {
+                _decodingTask.Wait();
+            }
+            catch (AggregateException) { }
+            _decodingTask = null;
+        }
+
+        // Clamp time
+        if (time < TimeSpan.Zero)
+            time = TimeSpan.Zero;
+        if (time > Duration)
+            time = Duration;
+
+        // Reset clocks
+        _masterClock = time.TotalSeconds;
+        _startTime = Raylib.GetTime() - _masterClock;
+        _nextFrameTime = _masterClock;
+        _isVideoFinished = false;
+
+        // Clear Buffers
+        lock (_videoFrameQueue)
+        {
+            _videoFrameQueue.Clear();
+            _videoFramePool.Clear();
+        }
+
+        lock (_audioLock)
+        {
+            _ringBufferReadPos = 0;
+            _ringBufferWritePos = 0;
+            _ringBufferCount = 0;
+        }
+
+        // Perform Seek
+        try
+        {
+            if (_videoFile != null)
+            {
+                using var frame = _videoFile.Video.GetFrame(time);
+                byte[] data = new byte[frame.Data.Length];
+                frame.Data.CopyTo(data);
+                UpdateTexture(data);
+            }
+
+            if (_hasAudio && _audioFile != null)
+            {
+                // Try to seek audio
+                try
+                {
+                    using var audioFrame = _audioFile.Audio.GetFrame(time);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn(
+                        $"VideoPlayer: Audio seek failed (might not be supported): {ex.Message}"
+                    );
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"VideoPlayer: Seek failed: {ex.Message}");
+        }
+
+        if (wasPlaying)
+        {
+            StartDecodingWorker();
+        }
+    }
+
     public void Play()
     {
         if (State == VideoPlayerState.Playing || State == VideoPlayerState.Buffering)

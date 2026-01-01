@@ -1,3 +1,4 @@
+using EndingApp.Scenes.ClipScene;
 using EndingApp.Scenes.SongRequest;
 using Raylib_cs;
 
@@ -33,6 +34,7 @@ internal static class Program
 
         EndingScene? endingScene = null;
         SongRequestScene? songRequestScene = null;
+        ClipScene? clipScene = null;
 
         while (!Raylib.WindowShouldClose())
         {
@@ -70,6 +72,16 @@ internal static class Program
                     songRequestScene = null;
                 }
             }
+            else if (clipScene?.IsActive == true)
+            {
+                clipScene.Update();
+                if (clipScene != null && !clipScene.IsActive)
+                {
+                    Logger.Info("Program: ClipScene is no longer active; performing cleanup.");
+                    clipScene.Cleanup();
+                    clipScene = null;
+                }
+            }
             else
             {
                 var mousePos = Raylib.GetMousePosition();
@@ -103,7 +115,9 @@ internal static class Program
                     }
                     else if (clipHovered)
                     {
-                        // TODO: Handle Clip button click
+                        Logger.Info("Program: Starting ClipScene");
+                        clipScene ??= new ClipScene(config);
+                        clipScene.Start();
                     }
                     else if (songRequestHovered)
                     {
@@ -125,6 +139,10 @@ internal static class Program
             else if (songRequestScene?.IsActive == true)
             {
                 songRequestScene.Draw();
+            }
+            else if (clipScene?.IsActive == true)
+            {
+                clipScene.Draw();
             }
             else
             {
