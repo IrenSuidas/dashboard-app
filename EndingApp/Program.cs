@@ -15,8 +15,8 @@ internal static class Program
         // Load configuration
         var config = AppConfig.Load();
 
-        const int screenWidth = 400;
-        const int screenHeight = 200;
+        const int screenWidth = 640;
+        const int screenHeight = 220;
 
         // Raylib.SetConfigFlags(ConfigFlags.UndecoratedWindow | ConfigFlags.TransparentWindow);
         Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow);
@@ -28,9 +28,9 @@ internal static class Program
         Raylib.SetWindowIcon(icon);
         Raylib.UnloadImage(icon);
 
-        Rectangle endingButton = new(20, 70, 110, 60);
-        Rectangle clipButton = new(145, 70, 110, 60);
-        Rectangle songRequestButton = new(270, 70, 110, 60);
+        Rectangle clipButton = new(30, 80, 170, 80);
+        Rectangle endingButton = new(225, 80, 170, 80);
+        Rectangle songRequestButton = new(420, 80, 190, 80);
 
         EndingScene? endingScene = null;
         SongRequestScene? songRequestScene = null;
@@ -85,8 +85,8 @@ internal static class Program
             else
             {
                 var mousePos = Raylib.GetMousePosition();
-                bool endingHovered = Raylib.CheckCollisionPointRec(mousePos, endingButton);
                 bool clipHovered = Raylib.CheckCollisionPointRec(mousePos, clipButton);
+                bool endingHovered = Raylib.CheckCollisionPointRec(mousePos, endingButton);
                 bool songRequestHovered = Raylib.CheckCollisionPointRec(
                     mousePos,
                     songRequestButton
@@ -95,7 +95,13 @@ internal static class Program
                 // Handle button clicks
                 if (Raylib.IsMouseButtonPressed(MouseButton.Left))
                 {
-                    if (endingHovered)
+                    if (clipHovered)
+                    {
+                        Logger.Info("Program: Starting ClipScene");
+                        clipScene ??= new ClipScene(config);
+                        clipScene.Start();
+                    }
+                    else if (endingHovered)
                     {
                         long memBefore = Diagnostics.GetPrivateMemoryMB();
                         Diagnostics.LogMemory(
@@ -112,12 +118,6 @@ internal static class Program
                             memBefore,
                             memAfter
                         );
-                    }
-                    else if (clipHovered)
-                    {
-                        Logger.Info("Program: Starting ClipScene");
-                        clipScene ??= new ClipScene(config);
-                        clipScene.Start();
                     }
                     else if (songRequestHovered)
                     {
@@ -146,81 +146,147 @@ internal static class Program
             }
             else
             {
-                Raylib.ClearBackground(new Color(0, 0, 0, 0)); // Transparent background
-
-                // Draw "Ending" button
-                var endingColor = Raylib.CheckCollisionPointRec(
-                    Raylib.GetMousePosition(),
-                    endingButton
-                )
-                    ? new Color(100, 100, 100, 200)
-                    : new Color(60, 60, 60, 180);
-                Raylib.DrawRectangleRounded(endingButton, 0.3f, 8, endingColor);
-                Raylib.DrawRectangleRoundedLines(
-                    endingButton,
-                    0.3f,
-                    8,
-                    new Color(200, 200, 200, 255)
-                );
-
-                string endingText = "Ending";
-                int endingTextWidth = Raylib.MeasureText(endingText, 20);
-                Raylib.DrawText(
-                    endingText,
-                    (int)(endingButton.X + (endingButton.Width - endingTextWidth) / 2),
-                    (int)(endingButton.Y + 20),
-                    20,
-                    Color.White
-                );
+                Raylib.ClearBackground(Color.Black);
 
                 // Draw "Clip" button
-                var clipColor = Raylib.CheckCollisionPointRec(Raylib.GetMousePosition(), clipButton)
-                    ? new Color(100, 100, 100, 200)
-                    : new Color(60, 60, 60, 180);
-                Raylib.DrawRectangleRounded(clipButton, 0.3f, 8, clipColor);
-                Raylib.DrawRectangleRoundedLines(
-                    clipButton,
-                    0.3f,
-                    8,
-                    new Color(200, 200, 200, 255)
+                bool clipHover = Raylib.CheckCollisionPointRec(
+                    Raylib.GetMousePosition(),
+                    clipButton
                 );
 
-                string clipText = "Clip";
-                int clipTextWidth = Raylib.MeasureText(clipText, 20);
+                // Background with subtle shadow effect
+                Rectangle clipShadow = new(
+                    clipButton.X + 3,
+                    clipButton.Y + 3,
+                    clipButton.Width,
+                    clipButton.Height
+                );
+                Raylib.DrawRectangleRounded(clipShadow, 0.2f, 10, new Color(0, 0, 0, 100));
+
+                // Main button
+                var clipBg = clipHover ? Color.White : new Color(240, 240, 240, 255);
+                Raylib.DrawRectangleRounded(clipButton, 0.2f, 10, clipBg);
+
+                // Border (draw multiple times for thickness)
+                var clipBorder = clipHover
+                    ? new Color(60, 60, 60, 255)
+                    : new Color(150, 150, 150, 255);
+                Raylib.DrawRectangleRoundedLines(clipButton, 0.2f, 10, clipBorder);
+                Rectangle clipInner = new(
+                    clipButton.X + 1,
+                    clipButton.Y + 1,
+                    clipButton.Width - 2,
+                    clipButton.Height - 2
+                );
+                Raylib.DrawRectangleRoundedLines(clipInner, 0.2f, 10, clipBorder);
+
+                // Text
+                string clipText = "Clips";
+                var clipTextColor = clipHover ? Color.Black : new Color(40, 40, 40, 255);
+                int clipTextWidth = Raylib.MeasureText(clipText, 24);
                 Raylib.DrawText(
                     clipText,
                     (int)(clipButton.X + (clipButton.Width - clipTextWidth) / 2),
-                    (int)(clipButton.Y + 20),
-                    20,
-                    Color.White
+                    (int)(clipButton.Y + (clipButton.Height - 24) / 2),
+                    24,
+                    clipTextColor
+                );
+
+                // Draw "Ending" button
+                bool endingHover = Raylib.CheckCollisionPointRec(
+                    Raylib.GetMousePosition(),
+                    endingButton
+                );
+
+                // Background with subtle shadow effect
+                Rectangle endingShadow = new(
+                    endingButton.X + 3,
+                    endingButton.Y + 3,
+                    endingButton.Width,
+                    endingButton.Height
+                );
+                Raylib.DrawRectangleRounded(endingShadow, 0.2f, 10, new Color(0, 0, 0, 100));
+
+                // Main button
+                var endingBg = endingHover ? Color.White : new Color(240, 240, 240, 255);
+                Raylib.DrawRectangleRounded(endingButton, 0.2f, 10, endingBg);
+
+                // Border (draw multiple times for thickness)
+                var endingBorder = endingHover
+                    ? new Color(60, 60, 60, 255)
+                    : new Color(150, 150, 150, 255);
+                Raylib.DrawRectangleRoundedLines(endingButton, 0.2f, 10, endingBorder);
+                Rectangle endingInner = new(
+                    endingButton.X + 1,
+                    endingButton.Y + 1,
+                    endingButton.Width - 2,
+                    endingButton.Height - 2
+                );
+                Raylib.DrawRectangleRoundedLines(endingInner, 0.2f, 10, endingBorder);
+
+                // Text
+                string endingText = "Ending";
+                var endingTextColor = endingHover ? Color.Black : new Color(40, 40, 40, 255);
+                int endingTextWidth = Raylib.MeasureText(endingText, 24);
+                Raylib.DrawText(
+                    endingText,
+                    (int)(endingButton.X + (endingButton.Width - endingTextWidth) / 2),
+                    (int)(endingButton.Y + (endingButton.Height - 24) / 2),
+                    24,
+                    endingTextColor
                 );
 
                 // Draw "Song Request" button
-                var songRequestColor = Raylib.CheckCollisionPointRec(
+                bool songRequestHover = Raylib.CheckCollisionPointRec(
                     Raylib.GetMousePosition(),
                     songRequestButton
-                )
-                    ? new Color(100, 100, 100, 200)
-                    : new Color(60, 60, 60, 180);
-                Raylib.DrawRectangleRounded(songRequestButton, 0.3f, 8, songRequestColor);
-                Raylib.DrawRectangleRoundedLines(
-                    songRequestButton,
-                    0.3f,
-                    8,
-                    new Color(200, 200, 200, 255)
                 );
 
-                string songRequestText = "Song Req";
-                int songRequestTextWidth = Raylib.MeasureText(songRequestText, 20);
+                // Background with subtle shadow effect
+                Rectangle songRequestShadow = new(
+                    songRequestButton.X + 3,
+                    songRequestButton.Y + 3,
+                    songRequestButton.Width,
+                    songRequestButton.Height
+                );
+                Raylib.DrawRectangleRounded(songRequestShadow, 0.2f, 10, new Color(0, 0, 0, 100));
+
+                // Main button
+                var songRequestBg = songRequestHover ? Color.White : new Color(240, 240, 240, 255);
+                Raylib.DrawRectangleRounded(songRequestButton, 0.2f, 10, songRequestBg);
+
+                // Border (draw multiple times for thickness)
+                var songRequestBorder = songRequestHover
+                    ? new Color(60, 60, 60, 255)
+                    : new Color(150, 150, 150, 255);
+                Raylib.DrawRectangleRoundedLines(songRequestButton, 0.2f, 10, songRequestBorder);
+                Rectangle songRequestInner = new(
+                    songRequestButton.X + 1,
+                    songRequestButton.Y + 1,
+                    songRequestButton.Width - 2,
+                    songRequestButton.Height - 2
+                );
+                Raylib.DrawRectangleRoundedLines(songRequestInner, 0.2f, 10, songRequestBorder);
+
+                string songRequestText = "Song Request";
+                var songRequestTextColor = songRequestHover
+                    ? Color.Black
+                    : new Color(40, 40, 40, 255);
+                int songRequestTextWidth = Raylib.MeasureText(songRequestText, 24);
                 Raylib.DrawText(
                     songRequestText,
                     (int)(
                         songRequestButton.X + (songRequestButton.Width - songRequestTextWidth) / 2
                     ),
-                    (int)(songRequestButton.Y + 20),
-                    20,
-                    Color.White
+                    (int)(songRequestButton.Y + (songRequestButton.Height - 24) / 2),
+                    24,
+                    songRequestTextColor
                 );
+
+                string title = "EndingApp";
+                int titleSize = 32;
+                int titleWidth = Raylib.MeasureText(title, titleSize);
+                Raylib.DrawText(title, (screenWidth - titleWidth) / 2, 25, titleSize, Color.White);
             }
 
             Raylib.EndDrawing();

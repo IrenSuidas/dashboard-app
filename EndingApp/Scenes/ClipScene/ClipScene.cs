@@ -52,12 +52,12 @@ internal sealed partial class ClipScene(AppConfig config) : IDisposable
         _fontLoader = null;
 
         // Restore window size for main menu
-        Raylib.SetWindowSize(400, 200);
+        Raylib.SetWindowSize(640, 220);
 
         // Center window on screen
         int monitorWidth = Raylib.GetMonitorWidth(Raylib.GetCurrentMonitor());
         int monitorHeight = Raylib.GetMonitorHeight(Raylib.GetCurrentMonitor());
-        Raylib.SetWindowPosition((monitorWidth - 400) / 2, (monitorHeight - 200) / 2);
+        Raylib.SetWindowPosition((monitorWidth - 640) / 2, (monitorHeight - 220) / 2);
 
         Logger.Info("ClipScene: Cleanup complete");
     }

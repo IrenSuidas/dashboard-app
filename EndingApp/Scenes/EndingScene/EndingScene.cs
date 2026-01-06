@@ -341,12 +341,12 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         Raylib.SetWindowState(ConfigFlags.TransparentWindow);
 
         // Restore original window size
-        Raylib.SetWindowSize(400, 200);
+        Raylib.SetWindowSize(640, 220);
 
         // Center the small window
         int monitorWidth = Raylib.GetMonitorWidth(Raylib.GetCurrentMonitor());
         int monitorHeight = Raylib.GetMonitorHeight(Raylib.GetCurrentMonitor());
-        Raylib.SetWindowPosition((monitorWidth - 400) / 2, (monitorHeight - 200) / 2);
+        Raylib.SetWindowPosition((monitorWidth - 640) / 2, (monitorHeight - 220) / 2);
 
         // Close audio device if possible (decrement refcount and close if nobody else needs it)
         AudioService.Unregister();
