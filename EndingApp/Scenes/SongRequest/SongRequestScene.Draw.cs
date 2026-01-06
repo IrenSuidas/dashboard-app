@@ -112,12 +112,18 @@ internal sealed partial class SongRequestScene
                     ? TimeSpan.FromSeconds(item.Duration.Value).ToString("mm\\:ss")
                     : "--:--";
 
+            // Truncate title to 65 characters for display in lists only
+            string displayTitle = item.Title;
+            if (displayTitle.Length > 65)
+            {
+                displayTitle = string.Concat(displayTitle.AsSpan(0, 65), "...");
+            }
+
             // Calculate available width for title
             // Width - padding - duration width - extra padding between title and duration
             float durationWidth = _fontLoader?.MeasureText(durationStr, 16, 1).X ?? 60;
             float availableTitleWidth = bounds.Width - 20 - durationWidth - 30; // 20px left pad, 30px gap+right pad
 
-            string displayTitle = item.Title;
             if (_fontLoader != null)
             {
                 float titleWidth = _fontLoader.MeasureText(displayTitle, 18, 1).X;

@@ -519,10 +519,19 @@ public sealed class VideoPlayer : IDisposable
                 }
 
                 // Reset Audio
-                if (_hasAudio)
+                if (_hasAudio && _audioFile != null)
                 {
-                    // We can't easily reset audio stream here without main thread
-                    // But we can clear the ring buffer
+                    // Reset audio file position to the beginning
+                    try
+                    {
+                        using var audioFrame = _audioFile.Audio.GetFrame(TimeSpan.Zero);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"VideoPlayer: Audio reset failed: {ex.Message}");
+                    }
+
+                    // Clear the ring buffer
                     lock (_audioLock)
                     {
                         _ringBufferReadPos = 0;

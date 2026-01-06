@@ -6,6 +6,33 @@ internal sealed partial class ClipScene
 {
     public void Update()
     {
+        // Handle Ctrl+Space based on context
+        if (
+            (
+                Raylib.IsKeyDown(KeyboardKey.LeftControl)
+                || Raylib.IsKeyDown(KeyboardKey.RightControl)
+            ) && Raylib.IsKeyPressed(KeyboardKey.Space)
+        )
+        {
+            if (_isVideoLoaded && _videoPlayer != null)
+            {
+                // If video is playing, stop it and return to list
+                Logger.Info("ClipScene: ctrl+space pressed - stopping video and returning to list");
+                _videoPlayer.Dispose();
+                _videoPlayer = null;
+                _isVideoLoaded = false;
+                _currentClip = null;
+                return;
+            }
+            else
+            {
+                // If in list view, return to main menu
+                Logger.Info("ClipScene: ctrl+space pressed - returning to main menu");
+                IsActive = false;
+                return;
+            }
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.Escape))
         {
             if (_videoPlayer != null)
@@ -72,7 +99,12 @@ internal sealed partial class ClipScene
         {
             _videoPlayer.Update();
 
-            if (Raylib.IsKeyPressed(KeyboardKey.Space))
+            // Play/Pause with Space (only if Ctrl is not pressed)
+            if (
+                Raylib.IsKeyPressed(KeyboardKey.Space)
+                && !Raylib.IsKeyDown(KeyboardKey.LeftControl)
+                && !Raylib.IsKeyDown(KeyboardKey.RightControl)
+            )
             {
                 if (_videoPlayer.State == VideoPlayerState.Playing)
                     _videoPlayer.Pause();
