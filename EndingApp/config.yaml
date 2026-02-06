@@ -11,6 +11,12 @@ ending:
 
   # Music file to play during the ending
   music: assets/music/remix.mp3
+  # Music volume from 0 to 100
+  musicVolume: 100
+  # Background music volume percentage while a clip plays (0-100)
+  musicDuckedVolumePercentage: 1
+  # Clip (carousel video) volume from 0 to 100
+  clipVolume: 100
 
   overlay: assets/images/overlay.gif
   overlayOpacity: 0.2

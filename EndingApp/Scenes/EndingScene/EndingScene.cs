@@ -90,8 +90,9 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
         _musicStarted = false;
         _musicStopped = false;
         _musicPlayElapsed = 0f;
-        _musicVolume = 1.0f;
-        _targetMusicVolume = 1.0f;
+        _baseMusicVolume = _config.Ending.MusicVolume / 100.0f;
+        _musicVolume = _baseMusicVolume;
+        _targetMusicVolume = _baseMusicVolume;
         _creditsStarted = false;
         _endTextStarted = false;
         _showEndText = false;
@@ -289,11 +290,12 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             if (_carouselVideoPlayer != null)
             {
                 _carouselVideoPlayer.IsLooping = false;
-                _carouselVideoPlayer.SetVolume(3.0f);
+                _carouselVideoPlayer.SetVolume(_config.Ending.ClipVolume / 100.0f);
             }
 
             // Duck background music volume when video starts
-            _targetMusicVolume = 0.3f;
+            _targetMusicVolume =
+                _config.Ending.MusicDuckedVolumePercentage / 100.0f * _baseMusicVolume;
             return true;
         }
         else
@@ -314,7 +316,7 @@ internal sealed partial class EndingScene(AppConfig config) : IDisposable
             _carouselTimer = 0f;
 
             // Restore background music volume for images
-            _targetMusicVolume = 1.0f;
+            _targetMusicVolume = _baseMusicVolume;
             return true;
         }
     }

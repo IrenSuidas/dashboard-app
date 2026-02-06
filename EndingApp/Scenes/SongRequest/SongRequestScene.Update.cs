@@ -580,19 +580,6 @@ internal sealed partial class SongRequestScene
         // Playback Logic
         lock (_listLock)
         {
-            // Check if we need to switch from Recurrent to Requested
-            if (
-                !_isPlayingRequested
-                && _requestedSongs.Count > _currentRequestedIndex
-                && !_isCrossfading
-            )
-            {
-                // Interrupt Recurrent
-                Logger.Info("SongRequestScene: Interrupting Recurrent for Requested");
-                StartCrossfade(_requestedSongs[_currentRequestedIndex], true);
-                return;
-            }
-
             // Check if current song finished
             if (
                 _isMusicLoaded

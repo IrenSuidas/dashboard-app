@@ -13,6 +13,7 @@ internal sealed partial class EndingScene
     private float _creditsHeight;
 
     // Music volume control
+    private float _baseMusicVolume = 1.0f;
     private float _musicVolume = 1.0f;
     private float _targetMusicVolume = 1.0f;
     private const float MusicFadeSpeed = 0.5f; // Volume units per second

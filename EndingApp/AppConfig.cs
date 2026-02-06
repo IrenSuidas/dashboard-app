@@ -27,6 +27,13 @@ internal sealed class AppConfig
         // Load ending configuration
         config.Ending.BackgroundImage = data.GetString("ending.background", "assets/images/bg.png");
         config.Ending.Music = data.GetString("ending.music", "assets/music/remix.mp3");
+        config.Ending.MusicVolume = Math.Clamp(data.GetInt("ending.musicVolume", 100), 0, 100);
+        config.Ending.ClipVolume = Math.Clamp(data.GetInt("ending.clipVolume", 100), 0, 100);
+        config.Ending.MusicDuckedVolumePercentage = Math.Clamp(
+            data.GetInt("ending.musicDuckedVolumePercentage", 30),
+            0,
+            100
+        );
         config.Ending.Width = data.GetInt("ending.width", 1280);
         config.Ending.Height = data.GetInt("ending.height", 720);
         config.Ending.BlackBarHeight = data.GetInt("ending.blackBarHeight", 100);
@@ -181,6 +188,9 @@ internal sealed class EndingConfig
 {
     public string BackgroundImage { get; set; } = "assets/images/bg.png";
     public string Music { get; set; } = "assets/music/remix.mp3";
+    public int MusicVolume { get; set; } = 100;
+    public int ClipVolume { get; set; } = 100;
+    public int MusicDuckedVolumePercentage { get; set; } = 30;
     public int Width { get; set; } = 1280;
     public int Height { get; set; } = 720;
     public int BlackBarHeight { get; set; } = 100;

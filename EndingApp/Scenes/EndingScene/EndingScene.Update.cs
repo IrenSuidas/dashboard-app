@@ -51,6 +51,7 @@ internal sealed partial class EndingScene
         if (!_musicStarted && !_musicStopped && !_startTextPlayed && _elapsedTime >= startDelay)
         {
             AudioService.Play(_music);
+            AudioService.SetVolume(_music, _musicVolume);
             _musicStarted = true;
             _showStartText = true;
             _creditsStarted = true;
@@ -285,7 +286,7 @@ internal sealed partial class EndingScene
                                 // Not enough time, stop and finish
                                 _carouselVideoPlayer.Stop(); // Ensure it's stopped/cleaned if needed
                                 _carouselState = CarouselState.Finished;
-                                _targetMusicVolume = 1.0f; // Restore volume
+                                _targetMusicVolume = _baseMusicVolume; // Restore volume
                             }
                             else
                             {
@@ -322,7 +323,7 @@ internal sealed partial class EndingScene
                         {
                             _carouselFader.StartFadeOut(1.0f);
                             _carouselState = CarouselState.FadingOut;
-                            _targetMusicVolume = 1.0f;
+                            _targetMusicVolume = _baseMusicVolume;
                         }
                     }
                     else // Image
